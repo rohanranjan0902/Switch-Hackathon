@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+enum ExecutionStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  BLOCKED
+}
+
+model User {
+  id         String     @id @default(cuid())
+  name       String
+  email      String     @unique
+  createdAt  DateTime   @default(now())
+  incidents  Incident[]
+  approvals  Approval[]
+}
+
+model Incident {
+  id          String          @id @default(cuid())
+  key         String          @unique
+  title       String
+  description String
+  service     String
+  severity    Severity
+  status      IncidentStatus  @default(OPEN)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  reporterId  String?
+  reporter    User?           @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  executions  AgentExecution[]
+  logs        Log[]
+  changes     CodeChange[]
+  tests       TestExecution[]
+  approvals   Approval[]
+
+  @@index([status, severity])
+  @@index([createdAt])
+}
+
+model Agent {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  role        String
+  createdAt   DateTime         @default(now())
+  executions  AgentExecution[]
+}
+
+model AgentExecution {
+  id          String          @id @default(cuid())
+  incidentId  String
+  agentId     String
+  status      ExecutionStatus @default(QUEUED)
+  task        String
+  output      String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  incident    Incident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  agent       Agent           @relation(fields: [agentId], references: [id], onDelete: Restrict)
+
+  @@index([incidentId, createdAt])
+}
+
+model Log {
+  id         String    @id @default(cuid())
+  incidentId String?
+  source     String
+  level      Severity
+  message    String
+  occurredAt DateTime
+  createdAt  DateTime  @default(now())
+  incident   Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt, level])
+}
+
+model CodeChange {
+  id          String    @id @default(cuid())
+  incidentId  String
+  summary     String
+  patch       String
+  rootCause   String
+  createdAt   DateTime  @default(now())
+  incident    Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  tests       TestExecution[]
+  approvals   Approval[]
+}
+
+model TestExecution {
+  id           String          @id @default(cuid())
+  incidentId   String
+  codeChangeId String?
+  status       ExecutionStatus @default(QUEUED)
+  command      String
+  output       String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  incident     Incident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  codeChange   CodeChange?     @relation(fields: [codeChangeId], references: [id], onDelete: SetNull)
+}
+
+model GitHubRepository {
+  id            String        @id @default(cuid())
+  owner         String
+  name          String
+  externalId    String        @unique
+  defaultBranch String
+  createdAt     DateTime      @default(now())
+  pullRequests  PullRequest[]
+}
+
+model PullRequest {
+  id           String           @id @default(cuid())
+  repositoryId String
+  number       Int
+  title        String
+  url          String
+  branch       String
+  state        String
+  createdAt    DateTime         @default(now())
+  repository   GitHubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, number])
+}
+
+model Approval {
+  id           String      @id @default(cuid())
+  incidentId   String
+  codeChangeId String
+  userId       String
+  approved     Boolean
+  note         String?
+  createdAt    DateTime    @default(now())
+  incident     Incident    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  codeChange   CodeChange  @relation(fields: [codeChangeId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+}

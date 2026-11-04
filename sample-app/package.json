@@ -1,0 +1,13 @@
+{
+  "name": "@command-center/sample-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test src/**/*.test.ts",
+    "demo": "tsx src/demo.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}

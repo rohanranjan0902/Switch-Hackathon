@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: devops_command_center
+      POSTGRES_USER: devops
+      POSTGRES_PASSWORD: devops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devops -d devops_command_center"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      NODE_ENV: development
+      API_PORT: 4000
+      FRONTEND_ORIGIN: http://localhost:5173
+      DATABASE_URL: postgresql://devops:devops@db:5432/devops_command_center?schema=public
+      SWITCH_ENABLED: "false"
+      GITHUB_ENABLED: "false"
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5173:4173"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:4000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

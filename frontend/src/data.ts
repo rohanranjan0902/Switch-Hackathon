@@ -1,0 +1,121 @@
+import type { Agent, Incident, LogEntry } from "./types";
+
+export const initialIncidents: Incident[] = [
+  {
+    id: "INC-2847",
+    title: "Checkout API returning 500s",
+    service: "checkout-api",
+    severity: "critical",
+    status: "investigating",
+    createdAt: "2 min ago",
+    summary: "Elevated payment failures after release v2.8.1.",
+    assignee: "Incident Manager",
+  },
+  {
+    id: "INC-2846",
+    title: "Inventory count mismatch on cart",
+    service: "inventory-service",
+    severity: "high",
+    status: "identified",
+    createdAt: "18 min ago",
+    summary: "Concurrent orders can reserve the same final item.",
+    assignee: "Code Fixer",
+  },
+  {
+    id: "INC-2845",
+    title: "Elevated latency on product search",
+    service: "search-api",
+    severity: "medium",
+    status: "monitoring",
+    createdAt: "1 hour ago",
+    summary: "Database query time increased during peak traffic.",
+    assignee: "Log Analyzer",
+  },
+  {
+    id: "INC-2844",
+    title: "Webhook delivery retries exhausted",
+    service: "events-worker",
+    severity: "low",
+    status: "resolved",
+    createdAt: "3 hours ago",
+    summary: "A stale signing secret caused partner webhook failures.",
+    assignee: "Testing Agent",
+  },
+];
+
+export const agents: Agent[] = [
+  {
+    id: "incident-manager",
+    name: "Incident Manager",
+    role: "Triage & coordination",
+    status: "working",
+    task: "Coordinating INC-2847 investigation",
+    lastActivity: "Just now",
+    mode: "demo",
+  },
+  {
+    id: "log-analyzer",
+    name: "Log Analyzer",
+    role: "Logs & signals",
+    status: "working",
+    task: "Correlating checkout errors",
+    lastActivity: "24 sec ago",
+    mode: "demo",
+  },
+  {
+    id: "code-fixer",
+    name: "Code Fixer",
+    role: "Root cause & patch",
+    status: "idle",
+    task: "Waiting for log findings",
+    lastActivity: "3 min ago",
+    mode: "demo",
+  },
+  {
+    id: "testing-agent",
+    name: "Testing Agent",
+    role: "Validation & regression",
+    status: "idle",
+    task: "No test run in progress",
+    lastActivity: "12 min ago",
+    mode: "demo",
+  },
+];
+
+export const logs: LogEntry[] = [
+  {
+    id: "log-01",
+    time: "14:32:08.481",
+    level: "critical",
+    service: "checkout-api",
+    message: "TypeError: Cannot read properties of undefined (reading 'id')",
+  },
+  {
+    id: "log-02",
+    time: "14:32:07.994",
+    level: "high",
+    service: "checkout-api",
+    message: "POST /api/checkout returned 500 in 182ms",
+  },
+  {
+    id: "log-03",
+    time: "14:31:56.105",
+    level: "high",
+    service: "inventory-service",
+    message: "Reservation conflict: requested 2, available 1",
+  },
+  {
+    id: "log-04",
+    time: "14:30:42.672",
+    level: "medium",
+    service: "search-api",
+    message: "Query exceeded 800ms threshold (duration=1246ms)",
+  },
+  {
+    id: "log-05",
+    time: "14:29:12.017",
+    level: "low",
+    service: "events-worker",
+    message: "Retry scheduled for partner webhook (attempt 2/5)",
+  },
+];
