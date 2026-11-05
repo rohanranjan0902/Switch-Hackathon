@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DevOps AI Command Center",
+    "subtitle": "Current demo foundation and planned human-approved incident response",
+    "output": "devops-ai-command-center-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "runtime",
+        "label": "Runtime",
+        "focus": [
+          "engineer",
+          "dashboard",
+          "api",
+          "incident_service",
+          "demo_store",
+          "socket"
+        ]
+      },
+      {
+        "id": "agents",
+        "label": "Agent flow",
+        "focus": [
+          "api",
+          "switch_adapter",
+          "switch_platform",
+          "agent_team",
+          "sample_app",
+          "sample_logs"
+        ]
+      },
+      {
+        "id": "approval",
+        "label": "Approval gate",
+        "focus": [
+          "agent_team",
+          "code_review",
+          "github_adapter",
+          "github_repo",
+          "engineer"
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [40, 100],
+    "cols": 9,
+    "gapX": 34,
+    "gapY": 42,
+    "cellW": 120,
+    "cellH": 64
+  },
+  "components": [
+    {
+      "id": "engineer",
+      "type": "external",
+      "label": "Engineer",
+      "sublabel": "reports + approves",
+      "row": 2,
+      "col": 0,
+      "tag": "human decision"
+    },
+    {
+      "id": "dashboard",
+      "type": "frontend",
+      "label": "Web Dashboard",
+      "sublabel": "React · Vite · TypeScript",
+      "row": 2,
+      "col": 1,
+      "tag": "implemented"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "REST API",
+      "sublabel": "Express · TypeScript",
+      "row": 2,
+      "col": 2,
+      "tag": "implemented"
+    },
+    {
+      "id": "incident_service",
+      "type": "backend",
+      "label": "Incident Service",
+      "sublabel": "validate · create · status",
+      "row": 2,
+      "col": 3,
+      "tag": "in-memory demo"
+    },
+    {
+      "id": "demo_store",
+      "type": "database",
+      "label": "Demo Store",
+      "sublabel": "process memory",
+      "row": 2,
+      "col": 4,
+      "tag": "resets on restart"
+    },
+    {
+      "id": "socket",
+      "type": "messagebus",
+      "label": "Socket.IO",
+      "sublabel": "incident created / updated",
+      "row": 0,
+      "col": 2,
+      "tag": "implemented"
+    },
+    {
+      "id": "switch_adapter",
+      "type": "backend",
+      "label": "Switch Adapter",
+      "sublabel": "typed boundary · fail closed",
+      "row": 0,
+      "col": 4,
+      "tag": "not configured"
+    },
+    {
+      "id": "switch_platform",
+      "type": "cloud",
+      "label": "Switch",
+      "sublabel": "official contract unverified",
+      "row": 0,
+      "col": 5,
+      "tag": "not connected"
+    },
+    {
+      "id": "agent_team",
+      "type": "backend",
+      "label": "Specialist Agents",
+      "sublabel": "triage · logs · code · tests",
+      "row": 0,
+      "col": 6,
+      "tag": "planned via Switch"
+    },
+    {
+      "id": "code_review",
+      "type": "security",
+      "label": "Human Review",
+      "sublabel": "approves patch + tests",
+      "row": 2,
+      "col": 6,
+      "tag": "approval flow pending"
+    },
+    {
+      "id": "github_adapter",
+      "type": "backend",
+      "label": "GitHub Adapter",
+      "sublabel": "credentials server-side",
+      "row": 2,
+      "col": 7,
+      "tag": "not implemented"
+    },
+    {
+      "id": "github_repo",
+      "type": "external",
+      "label": "GitHub Repo",
+      "sublabel": "branch + pull request",
+      "row": 2,
+      "col": 8,
+      "tag": "human approval first"
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "Prisma schema + migration",
+      "row": 4,
+      "col": 4,
+      "tag": "runtime persistence pending"
+    },
+    {
+      "id": "sample_app",
+      "type": "external",
+      "label": "Sample Store",
+      "sublabel": "checkout defects",
+      "row": 4,
+      "col": 0,
+      "tag": "reproducible tests"
+    },
+    {
+      "id": "sample_logs",
+      "type": "database",
+      "label": "Sample Logs",
+      "sublabel": "checkout · inventory · search",
+      "row": 4,
+      "col": 2,
+      "tag": "separate demo fixtures"
+    }
+  ],
+  "connections": [
+    {
+      "id": "engineer-dashboard",
+      "from": "engineer",
+      "to": "dashboard",
+      "label": "report · review",
+      "variant": "emphasis"
+    },
+    {
+      "id": "dashboard-api",
+      "from": "dashboard",
+      "to": "api",
+      "label": "REST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-incident-service",
+      "from": "api",
+      "to": "incident_service",
+      "label": "validate",
+      "variant": "emphasis"
+    },
+    {
+      "id": "incident-service-store",
+      "from": "incident_service",
+      "to": "demo_store",
+      "label": "current state",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-socket",
+      "from": "api",
+      "to": "socket",
+      "label": "events",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "variant": "emphasis"
+    },
+    {
+      "id": "socket-dashboard",
+      "from": "socket",
+      "to": "dashboard",
+      "label": "updates",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "incident-switch",
+      "from": "api",
+      "to": "switch_adapter",
+      "label": "disabled",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "variant": "dashed"
+    },
+    {
+      "id": "adapter-platform",
+      "from": "switch_adapter",
+      "to": "switch_platform",
+      "label": "disabled",
+      "variant": "dashed"
+    },
+    {
+      "id": "platform-agents",
+      "from": "switch_platform",
+      "to": "agent_team",
+      "label": "planned",
+      "variant": "dashed"
+    },
+    {
+      "id": "agents-review",
+      "from": "agent_team",
+      "to": "code_review",
+      "label": "proposed patch + test results",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "dashed"
+    },
+    {
+      "id": "review-github",
+      "from": "code_review",
+      "to": "github_adapter",
+      "label": "approval",
+      "variant": "security"
+    },
+    {
+      "id": "github-repository",
+      "from": "github_adapter",
+      "to": "github_repo",
+      "label": "PR",
+      "variant": "dashed"
+    },
+    {
+      "id": "incident-postgres",
+      "from": "incident_service",
+      "to": "postgres",
+      "label": "future Prisma persistence",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "dashed"
+    },
+    {
+      "id": "sample-fixture",
+      "from": "sample_app",
+      "to": "sample_logs",
+      "label": "demo",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Implemented now",
+      "items": [
+        "React dashboard calls the Express API for incident CRUD/status changes",
+        "Socket.IO broadcasts incident:created and incident:updated",
+        "Incident service is in-memory; sample logs and sample app tests are fixtures"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Integration boundaries",
+      "items": [
+        "Switch adapter fails closed; investigation currently returns 503",
+        "Switch API contract must be verified before sending any agent tasks",
+        "GitHub API operations are not implemented; credentials are not stored in DB"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Human safety gate",
+      "items": [
+        "Target flow: triage → logs → code proposal → isolated tests → human review",
+        "Approval/rejection endpoints are currently 501; auth and persistence remain future work",
+        "After a recorded approval, GitHub may open a PR; never auto-merge or deploy"
+      ]
+    }
+  ]
+}

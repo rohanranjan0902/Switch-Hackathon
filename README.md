@@ -6,6 +6,7 @@ A human-approved incident investigation workspace built for the WeMakeDevs Flip 
 
 ## What works today
 
+- Interactive architecture: [open the diagram](./docs/devops-ai-command-center-architecture.html) or [edit its Archify source](./docs/devops-ai-command-center.architecture.json). The written [HLD and LLD](./docs/ARCHITECTURE.md) explain current versus planned behavior.
 - Dark, responsive React dashboard with Overview, Incidents, AI Agents, Logs Explorer, Code Review, and GitHub views.
 - Create demo incidents, search/filter incidents and logs, and update incident status.
 - Express API with input validation, error responses, health checks, and Socket.IO incident events.
