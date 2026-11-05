@@ -83,7 +83,7 @@ Likewise, GitHub is not yet making API calls. Keep `GITHUB_ENABLED=false` until 
 
 ## Team of four
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for ownership, interfaces, branch naming, and pull request expectations.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for ownership, interfaces, branch naming, and pull request expectations, and [docs/TEAM_TASKS.md](./docs/TEAM_TASKS.md) for the four-person task breakdown and next steps.
 
 1. **AI Agents & Switch:** verified Switch adapter, agent orchestration, execution history.
 2. **Backend & Database:** Prisma-backed repositories, authentication/authorization, incident history.
