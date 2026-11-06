@@ -1,4 +1,48 @@
+import https from "node:https";
 import { env } from "../../config/env.js";
+
+const httpsAgent = new https.Agent({ family: 4, keepAlive: false });
+
+async function requestTelegram<T = unknown>(
+  botToken: string,
+  method: "GET" | "POST",
+  endpoint: string,
+  body?: unknown,
+): Promise<{ ok: boolean; result?: T; description?: string }> {
+  return new Promise((resolve, reject) => {
+    const payload = body ? JSON.stringify(body) : null;
+    const req = https.request(
+      {
+        hostname: "api.telegram.org",
+        path: `/bot${botToken}/${endpoint}`,
+        method,
+        agent: httpsAgent,
+        headers: {
+          ...(payload
+            ? {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(payload),
+              }
+            : {}),
+        },
+      },
+      (res) => {
+        let raw = "";
+        res.on("data", (chunk) => (raw += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(raw));
+          } catch (err) {
+            reject(err);
+          }
+        });
+      },
+    );
+    req.on("error", reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
 
 export interface TelegramMessageOptions {
   parse_mode?: "HTML" | "MarkdownV2" | "Markdown";
@@ -18,6 +62,11 @@ export class TelegramService {
     this.botToken = env.TELEGRAM_BOT_TOKEN ?? "";
     if (env.TELEGRAM_CHAT_ID) {
       this.knownChatIds.add(env.TELEGRAM_CHAT_ID);
+    }
+    if (this.botToken) {
+      console.log(`[telegram] Initialized with token prefix ${this.botToken.slice(0, 10)}... (known chats: ${Array.from(this.knownChatIds).join(", ") || "none"})`);
+    } else {
+      console.log(`[telegram] Disabled - no TELEGRAM_BOT_TOKEN provided.`);
     }
   }
 
@@ -51,18 +100,13 @@ export class TelegramService {
   ): Promise<boolean> {
     if (!this.botToken) return false;
     try {
-      const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text,
-          parse_mode: options.parse_mode ?? "HTML",
-          reply_markup: options.reply_markup,
-        }),
+      const res = await requestTelegram(this.botToken, "POST", "sendMessage", {
+        chat_id: chatId,
+        text,
+        parse_mode: options.parse_mode ?? "HTML",
+        reply_markup: options.reply_markup,
       });
-      return response.ok;
+      return Boolean(res.ok);
     } catch (err) {
       console.warn(`[telegram] Failed to send message to ${chatId}:`, err);
       return false;
@@ -108,38 +152,38 @@ export class TelegramService {
     await this.broadcast(message, { parse_mode: "HTML", reply_markup });
   }
 
+  private isPolling = false;
+
   startPolling(): void {
-    if (!this.botToken || this.pollInterval || process.env.NODE_ENV === "test") return;
-    // Initial fetch
-    void this.pollUpdates();
-    this.pollInterval = setInterval(() => {
-      void this.pollUpdates();
-    }, 3000);
-    if (this.pollInterval.unref) {
-      this.pollInterval.unref();
-    }
+    if (!this.botToken || this.isPolling || process.env.NODE_ENV === "test") return;
+    this.isPolling = true;
+    console.log("[telegram] Sequential long-polling loop started.");
+    void this.pollLoop();
   }
 
   stopPolling(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = undefined;
+    this.isPolling = false;
+  }
+
+  private async pollLoop(): Promise<void> {
+    while (this.isPolling) {
+      try {
+        await this.pollUpdates();
+      } catch {
+        // Sleep briefly on connection error before next cycle
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
     }
   }
 
   private async pollUpdates(): Promise<void> {
     if (!this.botToken) return;
     try {
-      const url = `https://api.telegram.org/bot${this.botToken}/getUpdates?offset=${this.lastUpdateId + 1}&timeout=2`;
-      const res = await fetch(url);
-      if (!res.ok) return;
-
-      const data = (await res.json()) as {
-        ok: boolean;
-        result: Array<{
+      const data = await requestTelegram<
+        Array<{
           update_id: number;
           message?: {
-            chat: { id: number };
+            chat: { id: number; type?: string };
             text?: string;
           };
           callback_query?: {
@@ -148,10 +192,12 @@ export class TelegramService {
             data?: string;
             message?: { chat: { id: number }; message_id: number };
           };
-        }>;
-      };
+        }>
+      >(this.botToken, "GET", `getUpdates?offset=${this.lastUpdateId + 1}&timeout=10`);
 
-      if (!data.ok || !Array.isArray(data.result)) return;
+      if (!data.ok || !Array.isArray(data.result)) {
+        return;
+      }
 
       for (const update of data.result) {
         this.lastUpdateId = Math.max(this.lastUpdateId, update.update_id);
@@ -165,8 +211,9 @@ export class TelegramService {
 
           const rawText = update.message.text?.trim() ?? "";
           const command = rawText.split(" ")[0].split("@")[0].toLowerCase();
+          console.log(`[telegram] Received message "${rawText}" (command: "${command}") from chat ${chatId}`);
 
-          if (command === "/start" || isNew) {
+          if (command === "/start" || command === "/help" || rawText.includes("devops_incident_2026_bot") || isNew) {
             const welcomeText = isGroup
               ? `🤝 <b>DevOps AI Incident War Room Connected!</b>\n\n` +
                 `This Telegram group is now registered as the active war room for the human engineer and the AI squad.\n\n` +
@@ -212,13 +259,9 @@ export class TelegramService {
 
           if (this.actionHandler && incidentKey) {
             const resultNote = await this.actionHandler(action, incidentKey);
-            await fetch(`https://api.telegram.org/bot${this.botToken}/answerCallbackQuery`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                callback_query_id: update.callback_query.id,
-                text: resultNote,
-              }),
+            await requestTelegram(this.botToken, "POST", "answerCallbackQuery", {
+              callback_query_id: update.callback_query.id,
+              text: resultNote,
             });
 
             if (update.callback_query.message && action !== "trigger") {
@@ -231,8 +274,8 @@ export class TelegramService {
           }
         }
       }
-    } catch {
-      // Ignore polling transient errors
+    } catch (err) {
+      console.error("[telegram] pollUpdates network error:", err);
     }
   }
 

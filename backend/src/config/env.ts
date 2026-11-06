@@ -1,5 +1,9 @@
+import dns from "node:dns";
 import dotenv from "dotenv";
 import { z } from "zod";
+
+// Ensure IPv4 lookup precedence in WSL environments to prevent Node fetch ETIMEDOUT
+dns.setDefaultResultOrder("ipv4first");
 
 dotenv.config();
 dotenv.config({ path: "../.env" });
