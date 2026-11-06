@@ -1,12 +1,18 @@
 import cors from "cors";
 import express from "express";
 import type { Server } from "socket.io";
+import { z } from "zod";
 import { env } from "./config/env.js";
 import { githubStatus } from "./integrations/github/status.js";
 import { switchAdapter } from "./integrations/switch/adapter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errors.js";
 import { createIncidentRouter } from "./routes/incidents.js";
 import { IncidentService } from "./services/incidentService.js";
+
+const logQuerySchema = z.object({
+  q: z.string().optional(),
+  level: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).optional(),
+});
 
 const demoAgents = [
   { id: "incident-manager", name: "Incident Manager", role: "Triage & coordination" },
@@ -96,8 +102,8 @@ export function createApp(io: Server) {
     response.json({ data: { ...agent, status: "idle", mode: "demo" } });
   });
   app.get("/api/logs", (request, response) => {
-    const query = request.query.q?.toString().toLowerCase();
-    const level = request.query.level?.toString().toUpperCase();
+    const { q, level } = logQuerySchema.parse(request.query);
+    const query = q?.trim().toLowerCase();
     const data = demoLogs.filter(
       (log) =>
         (!query || `${log.source} ${log.message}`.toLowerCase().includes(query)) &&

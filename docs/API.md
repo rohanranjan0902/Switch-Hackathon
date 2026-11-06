@@ -70,7 +70,7 @@ Currently return `501 APPROVAL_FLOW_NOT_IMPLEMENTED`. Authenticated approval and
 ## Agents and logs
 
 - `GET /agents` and `GET /agents/:id` return a demo role catalog, not real agent execution state.
-- `GET /logs?q=checkout&level=HIGH` filters sample application logs by free-text query and severity.
+- `GET /logs?q=checkout&level=HIGH` filters sample application logs by free-text query and severity. `level` must be `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW`; invalid or repeated query values return `400 VALIDATION_ERROR`.
 - `GET /logs/:id` returns one sample log or `404 LOG_NOT_FOUND`.
 
 ## GitHub
