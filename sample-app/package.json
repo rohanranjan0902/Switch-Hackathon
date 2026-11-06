@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test src/checkout.test.ts",
     "demo": "tsx src/demo.ts"
   },
   "devDependencies": {

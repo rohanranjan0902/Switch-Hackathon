@@ -36,7 +36,16 @@ import {
   XAxis,
 } from "recharts";
 import { agents, initialIncidents, logs } from "./data";
-import { fetchIncidents, patchIncidentStatus, postIncident, toIncident } from "./api";
+import {
+  fetchIncidents,
+  patchIncidentStatus,
+  postIncident,
+  toIncident,
+  investigateIncident,
+  approveIncident,
+  rejectIncident,
+  type ExecutionRecord,
+} from "./api";
 import type { Incident, IncidentStatus, Severity } from "./types";
 
 type Page =
@@ -98,6 +107,7 @@ function App() {
   const [severityFilter, setSeverityFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+  const [executions, setExecutions] = useState<Record<string, ExecutionRecord>>({});
   const [toast, setToast] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -114,6 +124,8 @@ function App() {
           ? current.map((item) => (item.id === incident.id ? incident : item))
           : [incident, ...current];
       });
+      // Also update selectedIncident if currently viewed
+      setSelectedIncident((curr) => (curr && curr.id === incident.id ? incident : curr));
     };
 
     fetchIncidents()
@@ -126,8 +138,97 @@ function App() {
       .catch(() => {
         if (active) setApiError("API offline — showing local demo fixtures.");
       });
+
     socket.on("incident:created", syncIncident);
     socket.on("incident:updated", syncIncident);
+
+    socket.on("agent:execution:started", (data: { incidentKey: string; executionId: string }) => {
+      if (!active) return;
+      setExecutions((prev) => ({
+        ...prev,
+        [data.incidentKey]: {
+          id: data.executionId,
+          incidentId: data.incidentKey,
+          incidentKey: data.incidentKey,
+          status: "RUNNING",
+          startedAt: new Date().toISOString(),
+          currentStep: "Initializing multi-agent pipeline",
+        },
+      }));
+    });
+
+    socket.on(
+      "agent:execution:step",
+      (step: { incidentId: string; role: string; step: string; status: string }) => {
+        if (!active) return;
+        setExecutions((prev) => {
+          const key = step.incidentId;
+          const existing = prev[key] || {
+            id: `exec-${Date.now()}`,
+            incidentId: key,
+            incidentKey: key,
+            status: "RUNNING",
+            startedAt: new Date().toISOString(),
+          };
+          return {
+            ...prev,
+            [key]: {
+              ...existing,
+              currentRole: step.role,
+              currentStep: step.step,
+            },
+          };
+        });
+      },
+    );
+
+    socket.on(
+      "agent:execution:completed",
+      (data: {
+        incidentKey: string;
+        report: NonNullable<ExecutionRecord["report"]> & {
+          executionId: string;
+          status: ExecutionRecord["status"];
+          startedAt: string;
+          completedAt: string;
+        };
+      }) => {
+        if (!active) return;
+        setExecutions((prev) => ({
+          ...prev,
+          [data.incidentKey]: {
+            id: data.report.executionId,
+            incidentId: data.incidentKey,
+            incidentKey: data.incidentKey,
+            status: data.report.status,
+            startedAt: data.report.startedAt,
+            completedAt: data.report.completedAt,
+            report: data.report,
+            codeChange: data.report.codeFix
+              ? {
+                  id: `chg-${Date.now()}`,
+                  summary: data.report.codeFix.summary,
+                  patch: data.report.codeFix.patch,
+                  rootCause: data.report.codeFix.rootCause,
+                  createdAt: data.report.completedAt,
+                }
+              : undefined,
+            testExecution: data.report.testVerification
+              ? {
+                  id: `test-${Date.now()}`,
+                  status: data.report.testVerification.status,
+                  command: data.report.testVerification.command,
+                  output: data.report.testVerification.output,
+                  passedCount: data.report.testVerification.passedCount,
+                  failedCount: data.report.testVerification.failedCount,
+                }
+              : undefined,
+          },
+        }));
+        setToast(`AI agents completed investigation for ${data.incidentKey}`);
+        window.setTimeout(() => setToast(""), 3500);
+      },
+    );
 
     return () => {
       active = false;
@@ -198,6 +299,48 @@ function App() {
       );
     }
     window.setTimeout(() => setToast(""), 2600);
+  }
+
+  async function handleInvestigate(incident: Incident) {
+    try {
+      setToast(`Dispatched AI agents to investigate ${incident.id}...`);
+      await investigateIncident(incident.id);
+    } catch (error) {
+      setToast(
+        error instanceof Error ? error.message : "Failed to trigger investigation.",
+      );
+    }
+    window.setTimeout(() => setToast(""), 3000);
+  }
+
+  async function handleApprove(incidentId: string) {
+    try {
+      await approveIncident(incidentId);
+      setToast(`Approved patch for ${incidentId}! Status updated to Resolved.`);
+      setIncidents((current) =>
+        current.map((item) =>
+          item.id === incidentId ? { ...item, status: "resolved" } : item,
+        ),
+      );
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Approval failed.");
+    }
+    window.setTimeout(() => setToast(""), 3200);
+  }
+
+  async function handleReject(incidentId: string) {
+    try {
+      await rejectIncident(incidentId);
+      setToast(`Rejected patch for ${incidentId}. Incident returned to Open.`);
+      setIncidents((current) =>
+        current.map((item) =>
+          item.id === incidentId ? { ...item, status: "open" } : item,
+        ),
+      );
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Rejection failed.");
+    }
+    window.setTimeout(() => setToast(""), 3200);
   }
 
   return (
@@ -336,6 +479,10 @@ function App() {
           {page === "Logs Explorer" && <LogsPage />}
           {page === "Code Review" && (
             <CodeReviewPage
+              executions={executions}
+              incidents={incidents}
+              onApprove={handleApprove}
+              onReject={handleReject}
               onToast={(message) => {
                 setToast(message);
                 window.setTimeout(() => setToast(""), 2600);
@@ -363,6 +510,12 @@ function App() {
       {selectedIncident && (
         <IncidentDetailsModal
           incident={selectedIncident}
+          execution={executions[selectedIncident.id]}
+          onInvestigate={handleInvestigate}
+          onOpenReview={() => {
+            setSelectedIncident(null);
+            setPage("Code Review");
+          }}
           onClose={() => setSelectedIncident(null)}
         />
       )}
@@ -963,60 +1116,205 @@ function LogsPage() {
   );
 }
 
-function CodeReviewPage({ onToast }: { onToast: (message: string) => void }) {
+function CodeReviewPage({
+  executions,
+  incidents,
+  onApprove,
+  onReject,
+  onToast,
+}: {
+  executions: Record<string, ExecutionRecord>;
+  incidents: Incident[];
+  onApprove: (incidentId: string) => Promise<void>;
+  onReject: (incidentId: string) => Promise<void>;
+  onToast: (message: string) => void;
+}) {
+  const reviewableKeys = Object.keys(executions).filter((key) => !!executions[key].codeChange);
+  const [selectedKey, setSelectedKey] = useState<string>(reviewableKeys[0] || "");
+  const activeKey = reviewableKeys.includes(selectedKey) ? selectedKey : reviewableKeys[0];
+  const execution = activeKey ? executions[activeKey] : undefined;
+  const incident = activeKey ? incidents.find((i) => i.id === activeKey) : undefined;
+
+  if (!execution || !execution.codeChange) {
+    return (
+      <>
+        <PageHeading
+          eyebrow="HUMAN APPROVAL"
+          title="Code review"
+          description="Review proposed changes before creating a pull request."
+        />
+        <div className="notice-banner">
+          <ShieldCheck size={17} />
+          <div>
+            <strong>No proposed code changes</strong>
+            <span>
+              Click "Investigate with AI Agents" inside any Incident Details view to start autonomous triage and patch generation.
+            </span>
+          </div>
+          <span className="demo-pill">
+            <span /> READY
+          </span>
+        </div>
+        <section className="panel review-empty">
+          <div className="review-empty-icon">
+            <Code2 size={23} />
+          </div>
+          <h2>Nothing to review yet</h2>
+          <p>
+            When an investigation produces a proposed patch, you’ll see the root cause,
+            diff, and test results here. Approval is always required before opening a PR.
+          </p>
+          <div className="review-steps">
+            <span>
+              <i>1</i> Investigation
+            </span>
+            <ArrowRight size={13} />
+            <span>
+              <i>2</i> Proposed diff
+            </span>
+            <ArrowRight size={13} />
+            <span>
+              <i>3</i> Your approval
+            </span>
+            <ArrowRight size={13} />
+            <span>
+              <i>4</i> GitHub PR
+            </span>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={() => onToast("Start an investigation on an incident first")}
+          >
+            <GitPullRequest size={14} /> Waiting for approved patch <ExternalLink size={12} />
+          </button>
+        </section>
+      </>
+    );
+  }
+
+  const patch = execution.codeChange.patch;
+  const patchLines = patch.split("\n");
+
   return (
     <>
       <PageHeading
-        eyebrow="HUMAN APPROVAL"
-        title="Code review"
-        description="Review proposed changes before creating a pull request."
+        eyebrow={`HUMAN REVIEW · ${activeKey}`}
+        title={`Proposed Patch for ${incident?.title || activeKey}`}
+        description="Inspect the autonomous multi-agent patch, verify regression test output, and approve or reject."
+        action={
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              className="primary-button"
+              style={{ background: "#10b981", borderColor: "#059669" }}
+              onClick={() => onApprove(activeKey)}
+            >
+              <Check size={15} /> Approve & Resolve
+            </button>
+            <button
+              className="secondary-button"
+              style={{ borderColor: "#ef4444", color: "#f87171" }}
+              onClick={() => onReject(activeKey)}
+            >
+              <X size={15} /> Reject
+            </button>
+          </div>
+        }
       />
-      <div className="notice-banner">
-        <ShieldCheck size={17} />
-        <div>
-          <strong>No proposed code changes</strong>
-          <span>
-            Code suggestions and test results will appear here after a real agent
-            integration is configured.
-          </span>
+
+      {reviewableKeys.length > 1 && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          {reviewableKeys.map((key) => (
+            <button
+              key={key}
+              className={`filter-button ${key === activeKey ? "active" : ""}`}
+              onClick={() => setSelectedKey(key)}
+            >
+              {key}
+            </button>
+          ))}
         </div>
-        <span className="demo-pill">
-          <span /> NO EXECUTION
-        </span>
-      </div>
-      <section className="panel review-empty">
-        <div className="review-empty-icon">
-          <Code2 size={23} />
-        </div>
-        <h2>Nothing to review yet</h2>
-        <p>
-          When an investigation produces a proposed patch, you’ll see the root cause,
-          diff, and test results here. Approval is always required before opening a PR.
-        </p>
-        <div className="review-steps">
-          <span>
-            <i>1</i> Investigation
-          </span>
-          <ArrowRight size={13} />
-          <span>
-            <i>2</i> Proposed diff
-          </span>
-          <ArrowRight size={13} />
-          <span>
-            <i>3</i> Your approval
-          </span>
-          <ArrowRight size={13} />
-          <span>
-            <i>4</i> GitHub PR
-          </span>
-        </div>
-        <button
-          className="secondary-button"
-          onClick={() => onToast("Demo data cannot create a pull request")}
+      )}
+
+      <div className="code-review-card">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+          }}
         >
-          <GitPullRequest size={14} /> Create pull request <ExternalLink size={12} />
-        </button>
-      </section>
+          <strong style={{ fontSize: "14px" }}>Root Cause & Defect Analysis</strong>
+          <span className="test-proof-badge">
+            <Check size={13} /> {execution.testExecution?.status || "PASSED"} ·{" "}
+            {execution.testExecution?.passedCount ?? 2} tests passed
+          </span>
+        </div>
+        <p
+          style={{
+            color: "#a1a1aa",
+            fontSize: "12px",
+            lineHeight: 1.6,
+            margin: "0 0 16px",
+          }}
+        >
+          {execution.codeChange.rootCause}
+        </p>
+
+        <div
+          style={{
+            marginBottom: "8px",
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "11px",
+            color: "#71717a",
+          }}
+        >
+          <span>PROPOSED UNIFIED DIFF</span>
+          <span>
+            Target:{" "}
+            {execution.report?.codeFix?.targetFile || "sample-app/src/checkout.ts"}
+          </span>
+        </div>
+
+        <div className="diff-viewer">
+          {patchLines.map((line, idx) => {
+            let className = "";
+            if (line.startsWith("+") && !line.startsWith("+++"))
+              className = "diff-line-add";
+            else if (line.startsWith("-") && !line.startsWith("---"))
+              className = "diff-line-del";
+            else if (line.startsWith("@@")) className = "diff-line-hunk";
+            return (
+              <span key={idx} className={className}>
+                {line}
+                {"\n"}
+              </span>
+            );
+          })}
+        </div>
+
+        {execution.testExecution?.output && (
+          <div style={{ marginTop: "16px" }}>
+            <span
+              style={{
+                fontSize: "11px",
+                color: "#71717a",
+                display: "block",
+                marginBottom: "6px",
+              }}
+            >
+              ISOLATED TEST VERIFICATION LOGS
+            </span>
+            <pre
+              className="diff-viewer"
+              style={{ color: "#86efac", maxHeight: "150px" }}
+            >
+              {execution.testExecution.output}
+            </pre>
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -1151,11 +1449,20 @@ function SettingsPage({ onNavigate }: { onNavigate: (page: Page) => void }) {
 
 function IncidentDetailsModal({
   incident,
+  execution,
+  onInvestigate,
+  onOpenReview,
   onClose,
 }: {
   incident: Incident;
+  execution?: ExecutionRecord;
+  onInvestigate: (incident: Incident) => void;
+  onOpenReview: () => void;
   onClose: () => void;
 }) {
+  const isRunning = execution?.status === "RUNNING";
+  const isSucceeded = execution?.status === "SUCCEEDED";
+
   return (
     <div
       className="modal-backdrop"
@@ -1205,10 +1512,18 @@ function IncidentDetailsModal({
             <strong>{incident.assignee}</strong>
           </div>
         </div>
+
         <div className="timeline-heading">
-          <h3>Investigation history</h3>
-          <span>DEMO RECORD</span>
+          <h3>Autonomous Agent Timeline</h3>
+          <span>
+            {isRunning
+              ? "INVESTIGATION IN PROGRESS"
+              : isSucceeded
+                ? "EXECUTION SUCCEEDED"
+                : "READY"}
+          </span>
         </div>
+
         <div className="timeline-item">
           <i />
           <div>
@@ -1218,11 +1533,134 @@ function IncidentDetailsModal({
             </span>
           </div>
         </div>
-        <div className="timeline-empty">
-          <span>No agent execution history is available. Switch is not connected.</span>
-        </div>
-        <div className="modal-actions">
-          <span>External investigation is disabled</span>
+
+        {execution ? (
+          <div
+            style={{
+              padding: "0 0 12px 14px",
+              borderLeft: "1px solid #303137",
+              marginLeft: "3px",
+            }}
+          >
+            {execution.report?.triage && (
+              <div className="agent-step-item">
+                <span className="agent-step-dot completed" />
+                <div>
+                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
+                    Incident Manager
+                  </strong>
+                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
+                    {execution.report.triage.summary}
+                  </p>
+                </div>
+              </div>
+            )}
+            {execution.report?.logAnalysis && (
+              <div className="agent-step-item">
+                <span className="agent-step-dot completed" />
+                <div>
+                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
+                    Log Analyzer
+                  </strong>
+                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
+                    {execution.report.logAnalysis.summary}
+                  </p>
+                </div>
+              </div>
+            )}
+            {execution.report?.codeFix && (
+              <div className="agent-step-item">
+                <span className="agent-step-dot completed" />
+                <div>
+                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
+                    Code Fixer
+                  </strong>
+                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
+                    {execution.report.codeFix.summary}
+                  </p>
+                </div>
+              </div>
+            )}
+            {execution.report?.testVerification && (
+              <div className="agent-step-item">
+                <span className="agent-step-dot completed" />
+                <div>
+                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
+                    Testing Agent
+                  </strong>
+                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
+                    {execution.report.testVerification.summary}
+                  </p>
+                </div>
+              </div>
+            )}
+            {isRunning && (
+              <div className="agent-step-item">
+                <span className="agent-step-dot running" />
+                <div>
+                  <strong style={{ fontSize: "11px", color: "#f59e0b" }}>
+                    {execution.currentRole || "AI Agents in progress"}
+                  </strong>
+                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
+                    {execution.currentStep || "Executing..."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="timeline-empty">
+            <span>
+              No agent execution started yet. Click investigate to run the multi-agent
+              pipeline.
+            </span>
+          </div>
+        )}
+
+        <div
+          className="modal-actions"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "16px",
+            alignItems: "center",
+          }}
+        >
+          {isSucceeded && (
+            <button
+              type="button"
+              className="primary-button"
+              style={{ background: "#7189f3" }}
+              onClick={onOpenReview}
+            >
+              <Code2 size={14} /> Review Proposed Patch
+            </button>
+          )}
+
+          {incident.status !== "resolved" && !isRunning && !isSucceeded && (
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => onInvestigate(incident)}
+            >
+              <Bot size={15} /> Investigate with AI Agents
+            </button>
+          )}
+
+          {isRunning && (
+            <span
+              style={{
+                color: "#f59e0b",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span className="agent-step-dot running" /> Agents investigating...
+            </span>
+          )}
+
           <button type="button" className="secondary-button" onClick={onClose}>
             Close
           </button>

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { Server } from "socket.io";
 import { IncidentService } from "../services/incidentService.js";
 import { switchAdapter } from "../integrations/switch/adapter.js";
-import type { Server } from "socket.io";
+import type { IncidentOrchestrator } from "../agents/orchestrator/IncidentOrchestrator.js";
 
 const createIncidentSchema = z.object({
   title: z.string().trim().min(5).max(160),
@@ -15,7 +16,16 @@ const updateIncidentSchema = z.object({
   status: z.enum(["OPEN", "INVESTIGATING", "IDENTIFIED", "MONITORING", "RESOLVED"]),
 });
 
-export function createIncidentRouter(service: IncidentService, io: Server) {
+const approvalSchema = z.object({
+  reviewer: z.string().trim().optional(),
+  note: z.string().trim().max(1000).optional(),
+});
+
+export function createIncidentRouter(
+  service: IncidentService,
+  io: Server,
+  orchestrator?: IncidentOrchestrator,
+) {
   const router = Router();
 
   router.get("/", (request, response) => {
@@ -70,9 +80,35 @@ export function createIncidentRouter(service: IncidentService, io: Server) {
         });
         return;
       }
-      await switchAdapter.dispatch({
+
+      const sync = request.query.sync === "true";
+      const execution = await switchAdapter.dispatch({
+        incidentId: incident.id,
         incidentKey: incident.key,
         task: "Investigate the incident",
+        sync,
+      });
+
+      const providerStatus = switchAdapter.status();
+
+      if (sync) {
+        response.status(200).json({
+          data: execution,
+          meta: { mode: providerStatus.provider, sync: true },
+        });
+        return;
+      }
+
+      response.status(202).json({
+        data: {
+          executionId: execution.id,
+          incidentId: incident.id,
+          incidentKey: incident.key,
+          status: execution.status,
+          startedAt: execution.startedAt,
+          message: "Investigation started. Progress streaming via Socket.IO.",
+        },
+        meta: { mode: providerStatus.provider, sync: false },
       });
     } catch (error) {
       if (error instanceof Error && error.name === "SwitchNotConfiguredError") {
@@ -85,21 +121,134 @@ export function createIncidentRouter(service: IncidentService, io: Server) {
     }
   });
 
-  router.post("/:id/approve", (_request, response) => {
-    response.status(501).json({
-      error: {
-        code: "APPROVAL_FLOW_NOT_IMPLEMENTED",
-        message: "Approval requires an authenticated user and a persisted code change.",
-      },
+  router.get("/:id/executions", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const latest = orchestrator?.getLatestExecutionForIncident(incident.id);
+    response.json({
+      data: latest ? [latest] : [],
+      meta: { mode: switchAdapter.status().provider, total: latest ? 1 : 0 },
     });
   });
 
-  router.post("/:id/reject", (_request, response) => {
-    response.status(501).json({
-      error: {
-        code: "APPROVAL_FLOW_NOT_IMPLEMENTED",
-        message: "Rejection requires an authenticated user and a persisted code change.",
+  router.get("/:id/approval", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const approval = service.getApproval(incident.id);
+    response.json({
+      data: approval ?? null,
+      meta: { mode: switchAdapter.status().provider },
+    });
+  });
+
+  router.post("/:id/approve", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const latestExecution = orchestrator?.getLatestExecutionForIncident(incident.id);
+    if (!latestExecution || !latestExecution.codeChange) {
+      response.status(400).json({
+        error: {
+          code: "NO_PROPOSED_CHANGE",
+          message: "Cannot approve: no proposed code change exists for this incident.",
+        },
+      });
+      return;
+    }
+
+    const body = approvalSchema.parse(request.body || {});
+    const approval = service.recordApproval(
+      incident.id,
+      latestExecution.codeChange.id,
+      true,
+      body.reviewer || "Incident Commander",
+      body.note,
+    );
+
+    // Update incident status to RESOLVED upon approval
+    service.updateStatus(incident.id, "RESOLVED");
+    const updatedIncident = service.get(incident.id);
+    io.emit("incident:updated", updatedIncident);
+    io.emit("incident:approved", { approval, incident: updatedIncident });
+
+    // Notify Switch Room if connected
+    void switchAdapter.sendMessage?.(
+      `🎉 [Patch Approved] Incident ${updatedIncident?.key ?? incident.key} patch approved by ${approval.reviewer}. Incident marked RESOLVED. Ready for GitHub PR sync.`,
+    );
+
+    response.json({
+      data: {
+        approval,
+        incident: updatedIncident,
+        message: "Code change proposal approved successfully. Ready for GitHub PR creation.",
       },
+      meta: { mode: switchAdapter.status().provider },
+    });
+  });
+
+  router.post("/:id/reject", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const latestExecution = orchestrator?.getLatestExecutionForIncident(incident.id);
+    if (!latestExecution || !latestExecution.codeChange) {
+      response.status(400).json({
+        error: {
+          code: "NO_PROPOSED_CHANGE",
+          message: "Cannot reject: no proposed code change exists for this incident.",
+        },
+      });
+      return;
+    }
+
+    const body = approvalSchema.parse(request.body || {});
+    const approval = service.recordApproval(
+      incident.id,
+      latestExecution.codeChange.id,
+      false,
+      body.reviewer || "Incident Commander",
+      body.note || "Rejected by reviewer",
+    );
+
+    service.updateStatus(incident.id, "OPEN");
+    const updatedIncident = service.get(incident.id);
+    io.emit("incident:updated", updatedIncident);
+    io.emit("incident:rejected", { approval, incident: updatedIncident });
+
+    // Notify Switch Room if connected
+    void switchAdapter.sendMessage?.(
+      `🛑 [Patch Rejected] Incident ${updatedIncident?.key ?? incident.key} patch rejected by ${approval.reviewer}. Reason: ${approval.note ?? "No reason provided."}`,
+    );
+
+    response.json({
+      data: {
+        approval,
+        incident: updatedIncident,
+        message: "Code change proposal rejected. Incident returned to OPEN status.",
+      },
+      meta: { mode: switchAdapter.status().provider },
     });
   });
 

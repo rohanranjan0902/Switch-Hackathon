@@ -107,3 +107,113 @@ export async function patchIncidentStatus(
   });
   return toIncident(record);
 }
+
+export interface ExecutionRecord {
+  id: string;
+  incidentId: string;
+  incidentKey: string;
+  status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "BLOCKED";
+  startedAt: string;
+  completedAt?: string;
+  currentRole?: string;
+  currentStep?: string;
+  report?: {
+    triage?: {
+      blastRadius: string;
+      plan: string[];
+      summary: string;
+    };
+    logAnalysis?: {
+      culpritLogId: string;
+      level: string;
+      source: string;
+      message: string;
+      pattern: string;
+      stackTrace?: string;
+      summary: string;
+    };
+    codeFix?: {
+      rootCause: string;
+      patch: string;
+      summary: string;
+      targetFile: string;
+    };
+    testVerification?: {
+      status: "PASSED" | "FAILED";
+      command: string;
+      passedCount: number;
+      failedCount: number;
+      output: string;
+      summary: string;
+    };
+  };
+  codeChange?: {
+    id?: string;
+    summary: string;
+    patch: string;
+    rootCause: string;
+    createdAt?: string;
+  };
+  testExecution?: {
+    id?: string;
+    status: string;
+    command?: string;
+    output?: string;
+    passedCount?: number;
+    failedCount?: number;
+  };
+}
+
+export async function investigateIncident(
+  incidentIdOrKey: string,
+): Promise<{ executionId: string; status: string; message: string }> {
+  return request<{ executionId: string; status: string; message: string }>(
+    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/investigate`,
+    { method: "POST" },
+  );
+}
+
+export async function fetchExecutions(incidentIdOrKey: string): Promise<ExecutionRecord[]> {
+  return request<ExecutionRecord[]>(
+    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/executions`,
+  );
+}
+
+export interface ApprovalResponse {
+  id: string;
+  incidentId: string;
+  codeChangeId: string;
+  approved: boolean;
+  reviewer: string;
+  note?: string;
+  createdAt: string;
+}
+
+export async function approveIncident(
+  incidentIdOrKey: string,
+  reviewer?: string,
+  note?: string,
+): Promise<{ approval: ApprovalResponse; incident: ApiIncident; message: string }> {
+  return request<{ approval: ApprovalResponse; incident: ApiIncident; message: string }>(
+    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/approve`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reviewer, note }),
+    },
+  );
+}
+
+export async function rejectIncident(
+  incidentIdOrKey: string,
+  reviewer?: string,
+  note?: string,
+): Promise<{ approval: ApprovalResponse; incident: ApiIncident; message: string }> {
+  return request<{ approval: ApprovalResponse; incident: ApiIncident; message: string }>(
+    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/reject`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reviewer, note }),
+    },
+  );
+}
+
