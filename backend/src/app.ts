@@ -8,6 +8,7 @@ import { switchAdapter } from "./integrations/switch/adapter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errors.js";
 import { createIncidentRouter } from "./routes/incidents.js";
 import { IncidentService } from "./services/incidentService.js";
+import { IncidentOrchestrator } from "./agents/orchestrator/IncidentOrchestrator.js";
 
 const logQuerySchema = z.object({
   q: z.string().optional(),
@@ -21,7 +22,7 @@ const demoAgents = [
   { id: "testing-agent", name: "Testing Agent", role: "Validation & regression" },
 ];
 
-const demoLogs = [
+export const demoLogs = [
   {
     id: "log-01",
     time: "14:32:08.481",
@@ -62,6 +63,13 @@ const demoLogs = [
 export function createApp(io: Server) {
   const app = express();
   const incidentService = new IncidentService();
+  const orchestrator = new IncidentOrchestrator(incidentService, io, {
+    stepDelayMs: 400,
+    availableLogs: demoLogs,
+  });
+
+  // Wire orchestrator to the composite switch adapter
+  switchAdapter.setOrchestrator(orchestrator);
 
   app.disable("x-powered-by");
   app.use(cors({ origin: env.FRONTEND_ORIGIN }));
@@ -71,7 +79,7 @@ export function createApp(io: Server) {
     response.json({
       data: {
         status: "ok",
-        mode: "demo",
+        mode: switchAdapter.status().provider,
         integrations: {
           switch: switchAdapter.status(),
           github: githubStatus(),
@@ -79,18 +87,36 @@ export function createApp(io: Server) {
       },
     });
   });
-  app.use("/api/incidents", createIncidentRouter(incidentService, io));
+
+  app.use("/api/incidents", createIncidentRouter(incidentService, io, orchestrator));
+
+  app.get("/api/executions/:id", (request, response) => {
+    const execution = orchestrator.getExecution(request.params.id);
+    if (!execution) {
+      response.status(404).json({
+        error: {
+          code: "EXECUTION_NOT_FOUND",
+          message: "Execution record was not found.",
+        },
+      });
+      return;
+    }
+    response.json({ data: execution, meta: { mode: switchAdapter.status().provider } });
+  });
+
   app.get("/api/agents", (_request, response) => {
+    const provider = switchAdapter.status();
     response.json({
       data: demoAgents.map((agent) => ({
         ...agent,
         status: "idle",
-        mode: "demo",
+        mode: provider.provider,
         currentTask: null,
       })),
-      meta: { mode: "demo", integration: switchAdapter.status() },
+      meta: { mode: provider.provider, integration: provider },
     });
   });
+
   app.get("/api/agents/:id", (request, response) => {
     const agent = demoAgents.find((candidate) => candidate.id === request.params.id);
     if (!agent) {
@@ -99,8 +125,11 @@ export function createApp(io: Server) {
       });
       return;
     }
-    response.json({ data: { ...agent, status: "idle", mode: "demo" } });
+    response.json({
+      data: { ...agent, status: "idle", mode: switchAdapter.status().provider },
+    });
   });
+
   app.get("/api/logs", (request, response) => {
     const { q, level } = logQuerySchema.parse(request.query);
     const query = q?.trim().toLowerCase();
@@ -111,6 +140,7 @@ export function createApp(io: Server) {
     );
     response.json({ data, meta: { mode: "demo", total: data.length } });
   });
+
   app.get("/api/logs/:id", (request, response) => {
     const log = demoLogs.find((entry) => entry.id === request.params.id);
     if (!log) {
@@ -121,6 +151,7 @@ export function createApp(io: Server) {
     }
     response.json({ data: log, meta: { mode: "demo" } });
   });
+
   app.get("/api/github/repositories", (_request, response) => {
     response.status(503).json({
       error: {
@@ -129,6 +160,7 @@ export function createApp(io: Server) {
       },
     });
   });
+
   app.get("/api/github/pull-requests", (_request, response) => {
     response.status(503).json({
       error: {
