@@ -76,6 +76,26 @@ export function createApp(io: Server) {
   telegramService.startPolling();
   telegramService.setActionHandler(async (action, incidentKey) => {
     const all = incidentService.list();
+
+    if (action === "trigger") {
+      const target = incidentKey ? all.find((i) => i.key === incidentKey) ?? all[0] : all[0];
+      if (!target) return "No incidents available to investigate";
+      void orchestrator.startInvestigation(target.id);
+      return `Launched investigation for ${target.key}`;
+    }
+
+    if (action === "status") {
+      return (
+        `📊 <b>Active Incidents (${all.length}):</b>\n\n` +
+        all
+          .map(
+            (i) =>
+              `• <code>${i.key}</code> [<b>${i.status}</b>] - ${i.title} (<code>${i.severity}</code>)`,
+          )
+          .join("\n")
+      );
+    }
+
     const incident = all.find((i) => i.key === incidentKey);
     if (!incident) return `Incident ${incidentKey} not found`;
 

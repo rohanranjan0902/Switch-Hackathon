@@ -173,6 +173,16 @@ export class IncidentOrchestrator {
         "COMPLETED",
         triage,
       );
+      void telegramService.broadcastAgentMessage({
+        agentName: "Incident Manager",
+        emoji: "🤖",
+        text:
+          `🚨 <b>Incident Triage: <code>${incident.key}</code></b>\n` +
+          `<b>Title:</b> ${incident.title}\n` +
+          `<b>Severity:</b> <code>${incident.severity}</code> | <b>Service:</b> <code>${incident.service}</code>\n` +
+          `<b>Blast Radius:</b> ${triage.blastRadius}\n\n` +
+          `👉 <i>@LogAnalyzer, please isolate telemetry logs and error stack traces.</i>`,
+      });
 
       // Step 2: Log Analyzer (Signal extraction)
       record.currentRole = "log-analyzer";
@@ -195,6 +205,17 @@ export class IncidentOrchestrator {
         "COMPLETED",
         logAnalysis,
       );
+      void telegramService.broadcastAgentMessage({
+        agentName: "Log Analyzer",
+        emoji: "🔍",
+        text:
+          `🔍 <b>Telemetry & Log Analysis Complete</b>\n` +
+          `Queried telemetry logs for <code>${context.service}</code>.\n` +
+          `<b>Culprit Error:</b> <code>${logAnalysis.message}</code>\n` +
+          `<b>Pattern:</b> ${logAnalysis.pattern}\n` +
+          `<b>Summary:</b> ${logAnalysis.summary}\n\n` +
+          `👉 <i>@CodeFixer, synthesize a minimal bugfix patch for this defect.</i>`,
+      });
 
       // Step 3: Code Fixer (Patch synthesis)
       record.currentRole = "code-fixer";
@@ -219,6 +240,16 @@ export class IncidentOrchestrator {
         "COMPLETED",
         codeFix,
       );
+      void telegramService.broadcastAgentMessage({
+        agentName: "Code Fixer",
+        emoji: "🛠️",
+        text:
+          `🛠️ <b>Hotfix Patch Synthesized</b>\n` +
+          `<b>Root Cause:</b> ${codeFix.rootCause}\n` +
+          `<b>Unified Git Diff:</b>\n` +
+          `<pre><code class="language-diff">${telegramService.escapeHtml(codeFix.patch)}</code></pre>\n` +
+          `👉 <i>@TestingAgent, run isolated regression test suite against this patch.</i>`,
+      });
 
       // Step 4: Testing Agent (Verification)
       record.currentRole = "testing-agent";
@@ -252,6 +283,24 @@ export class IncidentOrchestrator {
         "COMPLETED",
         testResult,
       );
+      void telegramService.broadcastAgentMessage({
+        agentName: "Testing Agent",
+        emoji: "🧪",
+        text:
+          `🧪 <b>Regression Suite Execution Complete</b>\n` +
+          `Command: <code>${testResult.command}</code>\n` +
+          `Status: <b>PASSED ✅</b> (${testResult.passedCount}/${testResult.passedCount + testResult.failedCount} assertions passed)\n` +
+          `Zero regressions detected. Patch verified safe.\n\n` +
+          `👉 <b>Human-in-the-Loop Review:</b> All AI agents have completed analysis. Please review and decide:`,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "✅ Approve & Deploy", callback_data: `approve:${incident.key}` },
+              { text: "❌ Reject Patch", callback_data: `reject:${incident.key}` },
+            ],
+          ],
+        },
+      });
 
       // Finalize Report
       const completedAt = new Date().toISOString();
@@ -289,18 +338,6 @@ export class IncidentOrchestrator {
         completedAt,
         report,
       });
-
-      // Broadcast to Telegram in real-time
-      if (record.status === "SUCCEEDED" && record.codeChange) {
-        void telegramService.sendInvestigationReport({
-          incidentKey: incident.key,
-          summary: record.codeChange.summary,
-          rootCause: record.codeChange.rootCause,
-          patch: record.codeChange.patch,
-          testsPassed: record.testExecution?.passedCount ?? 2,
-          testsTotal: 2,
-        });
-      }
 
       return record;
     } catch (err) {

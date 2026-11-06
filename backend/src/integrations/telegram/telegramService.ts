@@ -158,16 +158,51 @@ export class TelegramService {
 
         if (update.message) {
           const chatId = String(update.message.chat.id);
+          const chatType = (update.message.chat as { type?: string }).type;
+          const isGroup = chatType === "group" || chatType === "supergroup";
           const isNew = !this.knownChatIds.has(chatId);
           this.knownChatIds.add(chatId);
 
-          if (isNew || update.message.text?.startsWith("/start")) {
-            await this.sendMessage(
-              chatId,
-              `👋 <b>Connected to DevOps AI Command Center!</b>\n\n` +
+          const rawText = update.message.text?.trim() ?? "";
+          const command = rawText.split(" ")[0].split("@")[0].toLowerCase();
+
+          if (command === "/start" || isNew) {
+            const welcomeText = isGroup
+              ? `🤝 <b>DevOps AI Incident War Room Connected!</b>\n\n` +
+                `This Telegram group is now registered as the active war room for the human engineer and the AI squad.\n\n` +
+                `<b>Squad Members:</b>\n` +
+                `🤖 <b>Incident Manager</b> — Triage & blast radius coordination\n` +
+                `🔍 <b>Log Analyzer</b> — Telemetry & stack trace isolation\n` +
+                `🛠️ <b>Code Fixer</b> — Hotfix diff synthesizer\n` +
+                `🧪 <b>Testing Agent</b> — Automated regression suite validation\n\n` +
+                `When an incident is investigated, each agent will converse sequentially in this group, then request human approval.\n\n` +
+                `Click below or send <code>/investigate</code> to launch:`
+              : `👋 <b>Connected to DevOps AI Command Center!</b>\n\n` +
                 `You will receive real-time incident triage alerts, AI-generated code patches, and test proofs directly in this chat.\n\n` +
-                `<i>Ready for incident investigation...</i>`,
-            );
+                `<i>Ready for incident investigation...</i>`;
+
+            await this.sendMessage(chatId, welcomeText, {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🚀 Investigate INC-2847", callback_data: "trigger:INC-2847" }],
+                ],
+              },
+            });
+          } else if (command === "/investigate") {
+            const parts = rawText.split(" ").filter(Boolean);
+            const targetKey = parts[1] || "INC-2847";
+            if (this.actionHandler) {
+              await this.sendMessage(
+                chatId,
+                `🚀 <b>Initiating Incident Squad Investigation for <code>${targetKey}</code>...</b>\n<i>AI agents are joining the war room channel...</i>`,
+              );
+              await this.actionHandler("trigger", targetKey);
+            }
+          } else if (command === "/status") {
+            if (this.actionHandler) {
+              const statusNote = await this.actionHandler("status", "");
+              await this.sendMessage(chatId, statusNote);
+            }
           }
         }
 
@@ -186,7 +221,7 @@ export class TelegramService {
               }),
             });
 
-            if (update.callback_query.message) {
+            if (update.callback_query.message && action !== "trigger") {
               const statusEmoji = action === "approve" ? "✅" : "🛑";
               await this.sendMessage(
                 update.callback_query.message.chat.id,
@@ -201,7 +236,20 @@ export class TelegramService {
     }
   }
 
-  private escapeHtml(text: string): string {
+  async broadcastAgentMessage(options: {
+    agentName: string;
+    emoji: string;
+    text: string;
+    reply_markup?: TelegramMessageOptions["reply_markup"];
+  }): Promise<void> {
+    const formatted = [
+      `${options.emoji} <b>[${options.agentName}]</b>`,
+      options.text,
+    ].join("\n");
+    await this.broadcast(formatted, { reply_markup: options.reply_markup });
+  }
+
+  escapeHtml(text: string): string {
     return text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
