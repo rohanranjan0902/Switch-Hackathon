@@ -16,5 +16,6 @@ backend/prisma/dev.db
 .archify/
 TESTING_GUIDE_PERSON1.md
 .switch/
+.claude/
 
 
