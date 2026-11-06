@@ -65,7 +65,7 @@ export function createApp(io: Server) {
   const app = express();
   const incidentService = new IncidentService();
   const orchestrator = new IncidentOrchestrator(incidentService, io, {
-    stepDelayMs: 400,
+    stepDelayMs: 1500,
     availableLogs: demoLogs,
   });
 

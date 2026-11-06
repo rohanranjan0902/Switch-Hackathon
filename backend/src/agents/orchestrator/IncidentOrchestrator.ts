@@ -174,6 +174,7 @@ export class IncidentOrchestrator {
         triage,
       );
       void telegramService.broadcastAgentMessage({
+        role: "incident-manager",
         agentName: "Incident Manager",
         emoji: "🤖",
         text:
@@ -206,6 +207,7 @@ export class IncidentOrchestrator {
         logAnalysis,
       );
       void telegramService.broadcastAgentMessage({
+        role: "log-analyzer",
         agentName: "Log Analyzer",
         emoji: "🔍",
         text:
@@ -241,6 +243,7 @@ export class IncidentOrchestrator {
         codeFix,
       );
       void telegramService.broadcastAgentMessage({
+        role: "code-fixer",
         agentName: "Code Fixer",
         emoji: "🛠️",
         text:
@@ -284,6 +287,7 @@ export class IncidentOrchestrator {
         testResult,
       );
       void telegramService.broadcastAgentMessage({
+        role: "testing-agent",
         agentName: "Testing Agent",
         emoji: "🧪",
         text:

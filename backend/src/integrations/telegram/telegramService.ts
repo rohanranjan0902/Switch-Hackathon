@@ -51,20 +51,41 @@ export interface TelegramMessageOptions {
   };
 }
 
+export type AgentPersonaKey =
+  | "incident-manager"
+  | "log-analyzer"
+  | "code-fixer"
+  | "testing-agent";
+
 export class TelegramService {
   private readonly botToken: string;
+  private readonly roleTokens = new Map<AgentPersonaKey, string>();
   private knownChatIds = new Set<string>();
-  private pollInterval?: NodeJS.Timeout;
   private lastUpdateId = 0;
   private actionHandler?: (action: string, incidentKey: string) => Promise<string>;
 
   constructor() {
     this.botToken = env.TELEGRAM_BOT_TOKEN ?? "";
+    if (env.TELEGRAM_BOT_TOKEN_INCIDENT_MANAGER) {
+      this.roleTokens.set("incident-manager", env.TELEGRAM_BOT_TOKEN_INCIDENT_MANAGER);
+    }
+    if (env.TELEGRAM_BOT_TOKEN_LOG_ANALYZER) {
+      this.roleTokens.set("log-analyzer", env.TELEGRAM_BOT_TOKEN_LOG_ANALYZER);
+    }
+    if (env.TELEGRAM_BOT_TOKEN_CODE_FIXER) {
+      this.roleTokens.set("code-fixer", env.TELEGRAM_BOT_TOKEN_CODE_FIXER);
+    }
+    if (env.TELEGRAM_BOT_TOKEN_TESTING_AGENT) {
+      this.roleTokens.set("testing-agent", env.TELEGRAM_BOT_TOKEN_TESTING_AGENT);
+    }
     if (env.TELEGRAM_CHAT_ID) {
       this.knownChatIds.add(env.TELEGRAM_CHAT_ID);
     }
-    if (this.botToken) {
-      console.log(`[telegram] Initialized with token prefix ${this.botToken.slice(0, 10)}... (known chats: ${Array.from(this.knownChatIds).join(", ") || "none"})`);
+    const dedicatedCount = this.roleTokens.size;
+    if (this.botToken || dedicatedCount > 0) {
+      console.log(
+        `[telegram] Initialized (${dedicatedCount} dedicated agent bots, primary: ${this.botToken ? this.botToken.slice(0, 10) + "..." : "none"}, known chats: ${Array.from(this.knownChatIds).join(", ") || "none"})`
+      );
     } else {
       console.log(`[telegram] Disabled - no TELEGRAM_BOT_TOKEN provided.`);
     }
@@ -280,16 +301,58 @@ export class TelegramService {
   }
 
   async broadcastAgentMessage(options: {
+    role?: AgentPersonaKey;
     agentName: string;
     emoji: string;
     text: string;
     reply_markup?: TelegramMessageOptions["reply_markup"];
   }): Promise<void> {
+    const specificToken = options.role ? this.roleTokens.get(options.role) : undefined;
+    const activeToken = specificToken || this.botToken;
+
     const formatted = [
       `${options.emoji} <b>[${options.agentName}]</b>`,
       options.text,
     ].join("\n");
-    await this.broadcast(formatted, { reply_markup: options.reply_markup });
+
+    if (activeToken) {
+      await this.broadcastWithToken(activeToken, formatted, { reply_markup: options.reply_markup });
+    } else {
+      await this.broadcast(formatted, { reply_markup: options.reply_markup });
+    }
+  }
+
+  async broadcastWithToken(
+    token: string,
+    text: string,
+    options?: TelegramMessageOptions,
+  ): Promise<void> {
+    if (!token) return;
+    const promises = Array.from(this.knownChatIds).map((chatId) =>
+      this.sendMessageWithToken(token, chatId, text, options),
+    );
+    await Promise.allSettled(promises);
+  }
+
+  async sendMessageWithToken(
+    token: string,
+    chatId: string | number,
+    text: string,
+    options: TelegramMessageOptions = { parse_mode: "HTML" },
+  ): Promise<boolean> {
+    if (!token) return false;
+    try {
+      const res = await requestTelegram(token, "POST", "sendMessage", {
+        chat_id: chatId,
+        text,
+        parse_mode: options.parse_mode ?? "HTML",
+        reply_markup: options.reply_markup,
+      });
+      return Boolean(res.ok);
+    } catch (err) {
+      console.warn(`[telegram] Failed to send message to ${chatId}:`, err);
+      return false;
+    }
   }
 
   escapeHtml(text: string): string {
