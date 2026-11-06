@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Server } from "socket.io";
 import { IncidentService } from "../services/incidentService.js";
 import { switchAdapter } from "../integrations/switch/adapter.js";
+import { telegramService } from "../integrations/telegram/telegramService.js";
 import type { IncidentOrchestrator } from "../agents/orchestrator/IncidentOrchestrator.js";
 
 const createIncidentSchema = z.object({
@@ -193,6 +194,11 @@ export function createIncidentRouter(
       `🎉 [Patch Approved] Incident ${updatedIncident?.key ?? incident.key} patch approved by ${approval.reviewer}. Incident marked RESOLVED. Ready for GitHub PR sync.`,
     );
 
+    // Notify Telegram
+    void telegramService.broadcast(
+      `🎉 <b>[Patch Approved]</b> Incident <code>${updatedIncident?.key ?? incident.key}</code> patch approved by <i>${approval.reviewer}</i>. Incident marked <b>RESOLVED</b>.`,
+    );
+
     response.json({
       data: {
         approval,
@@ -240,6 +246,11 @@ export function createIncidentRouter(
     // Notify Switch Room if connected
     void switchAdapter.sendMessage?.(
       `🛑 [Patch Rejected] Incident ${updatedIncident?.key ?? incident.key} patch rejected by ${approval.reviewer}. Reason: ${approval.note ?? "No reason provided."}`,
+    );
+
+    // Notify Telegram
+    void telegramService.broadcast(
+      `🛑 <b>[Patch Rejected]</b> Incident <code>${updatedIncident?.key ?? incident.key}</code> patch rejected by <i>${approval.reviewer}</i>. Reason: ${approval.note ?? "No reason provided."}`,
     );
 
     response.json({

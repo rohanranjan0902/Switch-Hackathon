@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errors.js";
 import { createIncidentRouter } from "./routes/incidents.js";
 import { IncidentService } from "./services/incidentService.js";
 import { IncidentOrchestrator } from "./agents/orchestrator/IncidentOrchestrator.js";
+import { telegramService } from "./integrations/telegram/telegramService.js";
 
 const logQuerySchema = z.object({
   q: z.string().optional(),
@@ -70,6 +71,45 @@ export function createApp(io: Server) {
 
   // Wire orchestrator to the composite switch adapter
   switchAdapter.setOrchestrator(orchestrator);
+
+  // Start real-time Telegram integration
+  telegramService.startPolling();
+  telegramService.setActionHandler(async (action, incidentKey) => {
+    const all = incidentService.list();
+    const incident = all.find((i) => i.key === incidentKey);
+    if (!incident) return `Incident ${incidentKey} not found`;
+
+    const latest = orchestrator.getLatestExecutionForIncident(incident.id);
+    if (!latest || !latest.codeChange) return `No pending code change for ${incidentKey}`;
+
+    if (action === "approve") {
+      const approval = incidentService.recordApproval(
+        incident.id,
+        latest.codeChange.id,
+        true,
+        "Telegram Operator",
+        "Approved via Telegram button",
+      );
+      incidentService.updateStatus(incident.id, "RESOLVED");
+      const updated = incidentService.get(incident.id);
+      io.emit("incident:updated", updated);
+      io.emit("incident:approved", { approval, incident: updated });
+      return `Patch for ${incidentKey} approved and marked RESOLVED!`;
+    } else {
+      const approval = incidentService.recordApproval(
+        incident.id,
+        latest.codeChange.id,
+        false,
+        "Telegram Operator",
+        "Rejected via Telegram button",
+      );
+      incidentService.updateStatus(incident.id, "OPEN");
+      const updated = incidentService.get(incident.id);
+      io.emit("incident:updated", updated);
+      io.emit("incident:rejected", { approval, incident: updated });
+      return `Patch for ${incidentKey} rejected. Returned to OPEN.`;
+    }
+  });
 
   app.disable("x-powered-by");
   app.use(cors({ origin: env.FRONTEND_ORIGIN }));

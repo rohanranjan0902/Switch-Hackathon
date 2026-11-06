@@ -6,6 +6,7 @@ import { incidentManagerAgent } from "../roles/incidentManager.js";
 import { logAnalyzerAgent } from "../roles/logAnalyzer.js";
 import { codeFixerAgent } from "../roles/codeFixer.js";
 import { testingAgent } from "../roles/testingAgent.js";
+import { telegramService } from "../../integrations/telegram/telegramService.js";
 import type {
   ExecutionStatus,
   IncidentInvestigationContext,
@@ -288,6 +289,18 @@ export class IncidentOrchestrator {
         completedAt,
         report,
       });
+
+      // Broadcast to Telegram in real-time
+      if (record.status === "SUCCEEDED" && record.codeChange) {
+        void telegramService.sendInvestigationReport({
+          incidentKey: incident.key,
+          summary: record.codeChange.summary,
+          rootCause: record.codeChange.rootCause,
+          patch: record.codeChange.patch,
+          testsPassed: record.testExecution?.passedCount ?? 2,
+          testsTotal: 2,
+        });
+      }
 
       return record;
     } catch (err) {

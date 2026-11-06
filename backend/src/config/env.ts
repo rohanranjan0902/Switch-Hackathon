@@ -13,6 +13,8 @@ const envSchema = z.object({
   SWITCH_API_KEY: z.string().optional(),
   SWITCH_AGENT_ID: z.string().optional(),
   SWITCH_ROOM_ID: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_CHAT_ID: z.string().optional(),
   GITHUB_ENABLED: z.stringbool().default(false),
   GITHUB_TOKEN: z.string().optional(),
   GITHUB_REPOSITORY: z.string().optional(),
