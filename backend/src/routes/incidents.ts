@@ -188,6 +188,11 @@ export function createIncidentRouter(
     io.emit("incident:updated", updatedIncident);
     io.emit("incident:approved", { approval, incident: updatedIncident });
 
+    // Notify Switch Room if connected
+    void switchAdapter.sendMessage?.(
+      `🎉 [Patch Approved] Incident ${updatedIncident?.key ?? incident.key} patch approved by ${approval.reviewer}. Incident marked RESOLVED. Ready for GitHub PR sync.`,
+    );
+
     response.json({
       data: {
         approval,
@@ -231,6 +236,11 @@ export function createIncidentRouter(
     const updatedIncident = service.get(incident.id);
     io.emit("incident:updated", updatedIncident);
     io.emit("incident:rejected", { approval, incident: updatedIncident });
+
+    // Notify Switch Room if connected
+    void switchAdapter.sendMessage?.(
+      `🛑 [Patch Rejected] Incident ${updatedIncident?.key ?? incident.key} patch rejected by ${approval.reviewer}. Reason: ${approval.note ?? "No reason provided."}`,
+    );
 
     response.json({
       data: {

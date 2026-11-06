@@ -20,4 +20,5 @@ export interface SwitchTask {
 export interface SwitchAgentAdapter {
   status(): SwitchConnectionStatus;
   dispatch(task: SwitchTask): Promise<AgentExecutionRecord>;
+  sendMessage?(content: string): Promise<boolean>;
 }

@@ -19,13 +19,14 @@ export class CompositeSwitchAdapter implements SwitchAgentAdapter {
   private simulationImpl?: SimulationAgentAdapter;
 
   constructor(orchestrator?: IncidentOrchestrator) {
-    this.switchImpl = new SwitchAgentAdapterImpl();
+    this.switchImpl = new SwitchAgentAdapterImpl(orchestrator);
     if (orchestrator) {
       this.simulationImpl = new SimulationAgentAdapter(orchestrator);
     }
   }
 
   setOrchestrator(orchestrator: IncidentOrchestrator): void {
+    this.switchImpl.setOrchestrator(orchestrator);
     this.simulationImpl = new SimulationAgentAdapter(orchestrator);
   }
 
@@ -55,6 +56,13 @@ export class CompositeSwitchAdapter implements SwitchAgentAdapter {
       return this.simulationImpl.dispatch(task);
     }
     throw new SwitchNotConfiguredError();
+  }
+
+  async sendMessage(content: string): Promise<boolean> {
+    if (this.switchImpl && typeof this.switchImpl.sendMessage === "function") {
+      return this.switchImpl.sendMessage(content);
+    }
+    return false;
   }
 }
 
