@@ -38,6 +38,48 @@ test("POST /api/incidents/:id/investigate starts investigation", async () => {
     const execBody = (await execRes.json()) as { data: Array<{ status: string }> };
     assert.equal(execBody.data.length, 1);
     assert.equal(execBody.data[0].status, "SUCCEEDED");
+
+    // 4. Test Approve endpoint
+    const approveRes = await fetch(
+      `http://localhost:${port}/api/incidents/${firstIncidentId}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewer: "Incident Commander", note: "Verified in test" }),
+      },
+    );
+    assert.equal(approveRes.status, 200);
+    const approveBody = (await approveRes.json()) as {
+      data: { approval: { approved: boolean }; incident: { status: string } };
+    };
+    assert.equal(approveBody.data.approval.approved, true);
+    assert.equal(approveBody.data.incident.status, "RESOLVED");
+
+    // 5. Check GET approval
+    const getApprRes = await fetch(
+      `http://localhost:${port}/api/incidents/${firstIncidentId}/approval`,
+    );
+    assert.equal(getApprRes.status, 200);
+    const getApprBody = (await getApprRes.json()) as { data: { approved: boolean } };
+    assert.equal(getApprBody.data.approved, true);
+  } finally {
+    server.close();
+  }
+});
+
+test("POST /api/incidents/:id/approve rejects when no proposed code change exists", async () => {
+  const mockIo = { emit: () => {} } as unknown as import("socket.io").Server;
+  const app = createApp(mockIo);
+  const server = app.listen(0);
+  const port = (server.address() as import("node:net").AddressInfo).port;
+
+  try {
+    const res = await fetch(`http://localhost:${port}/api/incidents/demo-2844/approve`, {
+      method: "POST",
+    });
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { error: { code: string } };
+    assert.equal(body.error.code, "NO_PROPOSED_CHANGE");
   } finally {
     server.close();
   }

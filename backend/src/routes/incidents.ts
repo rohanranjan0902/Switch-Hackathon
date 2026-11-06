@@ -16,6 +16,11 @@ const updateIncidentSchema = z.object({
   status: z.enum(["OPEN", "INVESTIGATING", "IDENTIFIED", "MONITORING", "RESOLVED"]),
 });
 
+const approvalSchema = z.object({
+  reviewer: z.string().trim().optional(),
+  note: z.string().trim().max(1000).optional(),
+});
+
 export function createIncidentRouter(
   service: IncidentService,
   io: Server,
@@ -132,21 +137,108 @@ export function createIncidentRouter(
     });
   });
 
-  router.post("/:id/approve", (_request, response) => {
-    response.status(501).json({
-      error: {
-        code: "APPROVAL_FLOW_NOT_IMPLEMENTED",
-        message: "Approval requires an authenticated user and a persisted code change.",
-      },
+  router.get("/:id/approval", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const approval = service.getApproval(incident.id);
+    response.json({
+      data: approval ?? null,
+      meta: { mode: switchAdapter.status().provider },
     });
   });
 
-  router.post("/:id/reject", (_request, response) => {
-    response.status(501).json({
-      error: {
-        code: "APPROVAL_FLOW_NOT_IMPLEMENTED",
-        message: "Rejection requires an authenticated user and a persisted code change.",
+  router.post("/:id/approve", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const latestExecution = orchestrator?.getLatestExecutionForIncident(incident.id);
+    if (!latestExecution || !latestExecution.codeChange) {
+      response.status(400).json({
+        error: {
+          code: "NO_PROPOSED_CHANGE",
+          message: "Cannot approve: no proposed code change exists for this incident.",
+        },
+      });
+      return;
+    }
+
+    const body = approvalSchema.parse(request.body || {});
+    const approval = service.recordApproval(
+      incident.id,
+      latestExecution.codeChange.id,
+      true,
+      body.reviewer || "Incident Commander",
+      body.note,
+    );
+
+    // Update incident status to RESOLVED upon approval
+    service.updateStatus(incident.id, "RESOLVED");
+    const updatedIncident = service.get(incident.id);
+    io.emit("incident:updated", updatedIncident);
+    io.emit("incident:approved", { approval, incident: updatedIncident });
+
+    response.json({
+      data: {
+        approval,
+        incident: updatedIncident,
+        message: "Code change proposal approved successfully. Ready for GitHub PR creation.",
       },
+      meta: { mode: switchAdapter.status().provider },
+    });
+  });
+
+  router.post("/:id/reject", (request, response) => {
+    const incident = service.get(request.params.id);
+    if (!incident) {
+      response.status(404).json({
+        error: { code: "INCIDENT_NOT_FOUND", message: "Incident was not found." },
+      });
+      return;
+    }
+
+    const latestExecution = orchestrator?.getLatestExecutionForIncident(incident.id);
+    if (!latestExecution || !latestExecution.codeChange) {
+      response.status(400).json({
+        error: {
+          code: "NO_PROPOSED_CHANGE",
+          message: "Cannot reject: no proposed code change exists for this incident.",
+        },
+      });
+      return;
+    }
+
+    const body = approvalSchema.parse(request.body || {});
+    const approval = service.recordApproval(
+      incident.id,
+      latestExecution.codeChange.id,
+      false,
+      body.reviewer || "Incident Commander",
+      body.note || "Rejected by reviewer",
+    );
+
+    service.updateStatus(incident.id, "OPEN");
+    const updatedIncident = service.get(incident.id);
+    io.emit("incident:updated", updatedIncident);
+    io.emit("incident:rejected", { approval, incident: updatedIncident });
+
+    response.json({
+      data: {
+        approval,
+        incident: updatedIncident,
+        message: "Code change proposal rejected. Incident returned to OPEN status.",
+      },
+      meta: { mode: switchAdapter.status().provider },
     });
   });
 

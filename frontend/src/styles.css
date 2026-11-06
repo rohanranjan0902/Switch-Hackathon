@@ -1631,3 +1631,86 @@ h1 {
     font-size: 8px;
   }
 }
+
+.code-review-card {
+  background: #17181c;
+  border: 1px solid #2e3037;
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.diff-viewer {
+  background: #0d0e11;
+  border: 1px solid #282a30;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-x: auto;
+  padding: 12px;
+  color: #c9d1d9;
+  white-space: pre;
+}
+.diff-line-add {
+  display: block;
+  color: #7ee787;
+  background: rgba(46, 160, 67, 0.15);
+  padding: 0 4px;
+}
+.diff-line-del {
+  display: block;
+  color: #ffa198;
+  background: rgba(248, 81, 73, 0.15);
+  padding: 0 4px;
+}
+.diff-line-hunk {
+  display: block;
+  color: #79c0ff;
+  background: rgba(56, 139, 253, 0.1);
+  padding: 0 4px;
+}
+.test-proof-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #1f3b2c;
+  color: #4ade80;
+  border: 1px solid #286040;
+}
+.agent-step-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #23252a;
+}
+.agent-step-item:last-child {
+  border-bottom: none;
+}
+.agent-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.agent-step-dot.running {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  animation: pulse 1.5s infinite;
+}
+.agent-step-dot.completed {
+  background: #10b981;
+}
+.agent-step-dot.failed {
+  background: #ef4444;
+}
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
