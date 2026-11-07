@@ -2,7 +2,7 @@ import cors from "cors";
 import express from "express";
 import type { Server } from "socket.io";
 import { z } from "zod";
-import { env } from "./config/env.js";
+import { env, isRunningTests } from "./config/env.js";
 import { githubStatus } from "./integrations/github/status.js";
 import { switchAdapter } from "./integrations/switch/adapter.js";
 import { errorHandler, notFoundHandler } from "./middleware/errors.js";
@@ -73,7 +73,7 @@ export function createApp(io: Server) {
   switchAdapter.setOrchestrator(orchestrator);
 
   // Start real-time Telegram integration
-  if (env.NODE_ENV !== "test") {
+  if (!isRunningTests && env.NODE_ENV !== "test") {
     telegramService.startPolling();
   }
   telegramService.setActionHandler(async (action, incidentKey) => {

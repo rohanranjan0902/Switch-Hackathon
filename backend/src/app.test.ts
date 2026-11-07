@@ -34,6 +34,7 @@ test("logs endpoint validates severity query parameters", async () => {
     assert.equal(invalidResponse.status, 400);
     assert.equal(invalidBody.error.code, "VALIDATION_ERROR");
   } finally {
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
     await new Promise<void>((resolve) => io.close(() => resolve()));
   }
 });
