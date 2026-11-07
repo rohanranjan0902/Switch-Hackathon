@@ -203,7 +203,8 @@ export function createIncidentRouter(
       data: {
         approval,
         incident: updatedIncident,
-        message: "Code change proposal approved successfully. Ready for GitHub PR creation.",
+        message:
+          "Code change proposal approved successfully. Ready for GitHub PR creation.",
       },
       meta: { mode: switchAdapter.status().provider },
     });

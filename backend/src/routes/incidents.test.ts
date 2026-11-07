@@ -45,7 +45,10 @@ test("POST /api/incidents/:id/investigate starts investigation", async () => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewer: "Incident Commander", note: "Verified in test" }),
+        body: JSON.stringify({
+          reviewer: "Incident Commander",
+          note: "Verified in test",
+        }),
       },
     );
     assert.equal(approveRes.status, 200);

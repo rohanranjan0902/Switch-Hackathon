@@ -52,10 +52,7 @@ export interface TelegramMessageOptions {
 }
 
 export type AgentPersonaKey =
-  | "incident-manager"
-  | "log-analyzer"
-  | "code-fixer"
-  | "testing-agent";
+  "incident-manager" | "log-analyzer" | "code-fixer" | "testing-agent";
 
 export class TelegramService {
   private readonly botToken: string;
@@ -83,14 +80,16 @@ export class TelegramService {
     const dedicatedCount = this.roleTokens.size;
     if (this.botToken || dedicatedCount > 0) {
       console.log(
-        `[telegram] Initialized (${dedicatedCount} dedicated agent bots, primary: ${this.botToken ? this.botToken.slice(0, 10) + "..." : "none"}, known chats: ${Array.from(this.knownChatIds).join(", ") || "none"})`
+        `[telegram] Initialized (${dedicatedCount} dedicated agent bots, primary: ${this.botToken ? this.botToken.slice(0, 10) + "..." : "none"}, known chats: ${Array.from(this.knownChatIds).join(", ") || "none"})`,
       );
     } else {
       console.log(`[telegram] Disabled - no TELEGRAM_BOT_TOKEN provided.`);
     }
   }
 
-  setActionHandler(handler: (action: string, incidentKey: string) => Promise<string>): void {
+  setActionHandler(
+    handler: (action: string, incidentKey: string) => Promise<string>,
+  ): void {
     this.actionHandler = handler;
   }
 
@@ -185,9 +184,16 @@ export class TelegramService {
   }
 
   startPolling(): void {
-    if (this.allActiveTokens.length === 0 || this.isPolling || process.env.NODE_ENV === "test") return;
+    if (
+      this.allActiveTokens.length === 0 ||
+      this.isPolling ||
+      process.env.NODE_ENV === "test"
+    )
+      return;
     this.isPolling = true;
-    console.log(`[telegram] Sequential long-polling loop started for ${this.allActiveTokens.length} bot(s).`);
+    console.log(
+      `[telegram] Sequential long-polling loop started for ${this.allActiveTokens.length} bot(s).`,
+    );
     void this.pollLoop();
   }
 
@@ -243,7 +249,9 @@ export class TelegramService {
 
           const rawText = update.message.text?.trim() ?? "";
           const command = rawText.split(" ")[0].split("@")[0].toLowerCase();
-          console.log(`[telegram] Received message "${rawText}" (command: "${command}") from chat ${chatId}`);
+          console.log(
+            `[telegram] Received message "${rawText}" (command: "${command}") from chat ${chatId}`,
+          );
 
           if (command === "/start" || command === "/help" || isNew) {
             const welcomeText = isGroup
@@ -263,7 +271,12 @@ export class TelegramService {
             await this.sendMessageWithToken(token, chatId, welcomeText, {
               reply_markup: {
                 inline_keyboard: [
-                  [{ text: "🚀 Investigate INC-2847", callback_data: "trigger:INC-2847" }],
+                  [
+                    {
+                      text: "🚀 Investigate INC-2847",
+                      callback_data: "trigger:INC-2847",
+                    },
+                  ],
                 ],
               },
             });
@@ -329,7 +342,9 @@ export class TelegramService {
     ].join("\n");
 
     if (activeToken) {
-      await this.broadcastWithToken(activeToken, formatted, { reply_markup: options.reply_markup });
+      await this.broadcastWithToken(activeToken, formatted, {
+        reply_markup: options.reply_markup,
+      });
     } else {
       await this.broadcast(formatted, { reply_markup: options.reply_markup });
     }
@@ -369,10 +384,7 @@ export class TelegramService {
   }
 
   escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 }
 

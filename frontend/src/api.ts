@@ -1,6 +1,14 @@
-import type { Incident, IncidentStatus, Severity } from "./types";
+import type {
+  Agent,
+  ApprovalRecord,
+  ExecutionRecord,
+  Incident,
+  IncidentStatus,
+  LogEntry,
+  Severity,
+} from "./types";
 
-interface ApiIncident {
+export interface ApiIncident {
   id: string;
   key: string;
   title: string;
@@ -9,15 +17,17 @@ interface ApiIncident {
   severity: string;
   status: string;
   createdAt: string;
+  updatedAt?: string;
   assignee: string;
 }
 
-interface ApiEnvelope<T> {
+export interface ApiEnvelope<T> {
   data: T;
-  error?: { message?: string };
+  meta?: Record<string, unknown>;
+  error?: { code?: string; message?: string };
 }
 
-function parseSeverity(value: string): Severity {
+export function parseSeverity(value: string): Severity {
   const parsed: Record<string, Severity> = {
     critical: "critical",
     high: "high",
@@ -25,11 +35,10 @@ function parseSeverity(value: string): Severity {
     low: "low",
   };
   const severity = parsed[value.toLowerCase()];
-  if (!severity) throw new Error(`Unknown incident severity from API: ${value}`);
-  return severity;
+  return severity ?? "medium";
 }
 
-function parseStatus(value: string): IncidentStatus {
+export function parseStatus(value: string): IncidentStatus {
   const parsed: Record<string, IncidentStatus> = {
     open: "open",
     investigating: "investigating",
@@ -38,29 +47,33 @@ function parseStatus(value: string): IncidentStatus {
     resolved: "resolved",
   };
   const status = parsed[value.toLowerCase()];
-  if (!status) throw new Error(`Unknown incident status from API: ${value}`);
-  return status;
+  return status ?? "open";
 }
 
-function relativeTime(timestamp: string): string {
-  const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(timestamp)) / 60_000));
+export function relativeTime(timestamp: string): string {
+  const parsed = Date.parse(timestamp);
+  if (isNaN(parsed)) return "Recently";
+  const diffMs = Date.now() - parsed;
+  const minutes = Math.max(0, Math.floor(diffMs / 60_000));
   if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return `${Math.floor(hours / 24)} day${hours >= 48 ? "s" : ""} ago`;
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export function toIncident(record: ApiIncident): Incident {
   return {
-    id: record.key,
+    id: record.key || record.id,
     title: record.title,
     service: record.service,
     severity: parseSeverity(record.severity),
     status: parseStatus(record.status),
     createdAt: relativeTime(record.createdAt),
+    rawCreatedAt: record.createdAt,
     summary: record.description,
-    assignee: record.assignee,
+    assignee: record.assignee || "Incident Manager",
   };
 }
 
@@ -71,7 +84,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok) {
-    throw new Error(body.error?.message ?? `Request failed (${response.status}).`);
+    throw new Error(
+      body.error?.message ?? `Request failed with status ${response.status}`,
+    );
   }
   return body.data;
 }
@@ -98,126 +113,87 @@ export async function fetchHealth(): Promise<ApiHealth> {
   return request<ApiHealth>("/api/health");
 }
 
-export async function fetchIncidents(): Promise<Incident[]> {
-  const records = await request<ApiIncident[]>("/api/incidents");
+export async function fetchIncidents(params?: {
+  severity?: string;
+  status?: string;
+}): Promise<Incident[]> {
+  const query = new URLSearchParams();
+  if (params?.severity && params.severity !== "all")
+    query.set("severity", params.severity);
+  if (params?.status && params.status !== "all") query.set("status", params.status);
+  const qStr = query.toString();
+  const records = await request<ApiIncident[]>(`/api/incidents${qStr ? `?${qStr}` : ""}`);
   return records.map(toIncident);
+}
+
+export async function fetchIncident(idOrKey: string): Promise<Incident> {
+  const record = await request<ApiIncident>(
+    `/api/incidents/${encodeURIComponent(idOrKey)}`,
+  );
+  return toIncident(record);
 }
 
 export async function postIncident(input: {
   title: string;
+  description?: string;
   service: string;
   severity: Severity;
 }): Promise<Incident> {
   const record = await request<ApiIncident>("/api/incidents", {
     method: "POST",
     body: JSON.stringify({
-      ...input,
+      title: input.title,
+      description:
+        input.description || "Incident investigation pending automated agent triage.",
+      service: input.service,
       severity: input.severity.toUpperCase(),
-      description: "New incident report awaiting investigation.",
     }),
   });
   return toIncident(record);
 }
 
 export async function patchIncidentStatus(
-  key: string,
+  idOrKey: string,
   status: IncidentStatus,
 ): Promise<Incident> {
-  const record = await request<ApiIncident>(`/api/incidents/${encodeURIComponent(key)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status: status.toUpperCase() }),
-  });
+  const record = await request<ApiIncident>(
+    `/api/incidents/${encodeURIComponent(idOrKey)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status: status.toUpperCase() }),
+    },
+  );
   return toIncident(record);
 }
 
-export interface ExecutionRecord {
-  id: string;
-  incidentId: string;
-  incidentKey: string;
-  status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "BLOCKED";
-  startedAt: string;
-  completedAt?: string;
-  currentRole?: string;
-  currentStep?: string;
-  report?: {
-    triage?: {
-      blastRadius: string;
-      plan: string[];
-      summary: string;
-    };
-    logAnalysis?: {
-      culpritLogId: string;
-      level: string;
-      source: string;
-      message: string;
-      pattern: string;
-      stackTrace?: string;
-      summary: string;
-    };
-    codeFix?: {
-      rootCause: string;
-      patch: string;
-      summary: string;
-      targetFile: string;
-    };
-    testVerification?: {
-      status: "PASSED" | "FAILED";
-      command: string;
-      passedCount: number;
-      failedCount: number;
-      output: string;
-      summary: string;
-    };
-  };
-  codeChange?: {
-    id?: string;
-    summary: string;
-    patch: string;
-    rootCause: string;
-    createdAt?: string;
-  };
-  testExecution?: {
-    id?: string;
-    status: string;
-    command?: string;
-    output?: string;
-    passedCount?: number;
-    failedCount?: number;
-  };
-}
-
 export async function investigateIncident(
-  incidentIdOrKey: string,
+  idOrKey: string,
 ): Promise<{ executionId: string; status: string; message: string }> {
   return request<{ executionId: string; status: string; message: string }>(
-    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/investigate`,
+    `/api/incidents/${encodeURIComponent(idOrKey)}/investigate`,
     { method: "POST" },
   );
 }
 
-export async function fetchExecutions(incidentIdOrKey: string): Promise<ExecutionRecord[]> {
+export async function fetchExecutions(idOrKey: string): Promise<ExecutionRecord[]> {
   return request<ExecutionRecord[]>(
-    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/executions`,
+    `/api/incidents/${encodeURIComponent(idOrKey)}/executions`,
   );
 }
 
-export interface ApprovalResponse {
-  id: string;
-  incidentId: string;
-  codeChangeId: string;
-  approved: boolean;
-  reviewer: string;
-  note?: string;
-  createdAt: string;
+export async function fetchApproval(idOrKey: string): Promise<ApprovalRecord | null> {
+  return request<ApprovalRecord | null>(
+    `/api/incidents/${encodeURIComponent(idOrKey)}/approval`,
+  );
 }
 
 export async function approveIncident(
-  incidentIdOrKey: string,
+  idOrKey: string,
   reviewer?: string,
   note?: string,
-): Promise<{ approval: ApprovalResponse; incident: ApiIncident; message: string }> {
-  return request<{ approval: ApprovalResponse; incident: ApiIncident; message: string }>(
-    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/approve`,
+): Promise<{ approval: ApprovalRecord; incident: ApiIncident; message: string }> {
+  return request<{ approval: ApprovalRecord; incident: ApiIncident; message: string }>(
+    `/api/incidents/${encodeURIComponent(idOrKey)}/approve`,
     {
       method: "POST",
       body: JSON.stringify({ reviewer, note }),
@@ -226,12 +202,12 @@ export async function approveIncident(
 }
 
 export async function rejectIncident(
-  incidentIdOrKey: string,
+  idOrKey: string,
   reviewer?: string,
   note?: string,
-): Promise<{ approval: ApprovalResponse; incident: ApiIncident; message: string }> {
-  return request<{ approval: ApprovalResponse; incident: ApiIncident; message: string }>(
-    `/api/incidents/${encodeURIComponent(incidentIdOrKey)}/reject`,
+): Promise<{ approval: ApprovalRecord; incident: ApiIncident; message: string }> {
+  return request<{ approval: ApprovalRecord; incident: ApiIncident; message: string }>(
+    `/api/incidents/${encodeURIComponent(idOrKey)}/reject`,
     {
       method: "POST",
       body: JSON.stringify({ reviewer, note }),
@@ -239,3 +215,32 @@ export async function rejectIncident(
   );
 }
 
+export async function fetchAgents(): Promise<Agent[]> {
+  return request<Agent[]>("/api/agents");
+}
+
+export async function fetchLogs(params?: {
+  q?: string;
+  level?: string;
+}): Promise<LogEntry[]> {
+  const query = new URLSearchParams();
+  if (params?.q) query.set("q", params.q);
+  if (params?.level && params.level !== "all")
+    query.set("level", params.level.toUpperCase());
+  const qStr = query.toString();
+  interface RawLog {
+    id: string;
+    time: string;
+    level: string;
+    source: string;
+    message: string;
+  }
+  const rawLogs = await request<RawLog[]>(`/api/logs${qStr ? `?${qStr}` : ""}`);
+  return rawLogs.map((log) => ({
+    id: log.id,
+    time: log.time,
+    level: parseSeverity(log.level),
+    service: log.source,
+    message: log.message,
+  }));
+}

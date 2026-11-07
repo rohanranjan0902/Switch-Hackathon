@@ -73,12 +73,16 @@ export function createApp(io: Server) {
   switchAdapter.setOrchestrator(orchestrator);
 
   // Start real-time Telegram integration
-  telegramService.startPolling();
+  if (env.NODE_ENV !== "test") {
+    telegramService.startPolling();
+  }
   telegramService.setActionHandler(async (action, incidentKey) => {
     const all = incidentService.list();
 
     if (action === "trigger") {
-      const target = incidentKey ? all.find((i) => i.key === incidentKey) ?? all[0] : all[0];
+      const target = incidentKey
+        ? (all.find((i) => i.key === incidentKey) ?? all[0])
+        : all[0];
       if (!target) return "No incidents available to investigate";
       void orchestrator.startInvestigation(target.id);
       return `Launched investigation for ${target.key}`;

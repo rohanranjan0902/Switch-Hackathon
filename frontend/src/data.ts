@@ -1,5 +1,8 @@
 import type { Agent, Incident, LogEntry } from "./types";
 
+const now = Date.now();
+const minutesAgo = (mins: number) => new Date(now - mins * 60_000).toISOString();
+
 export const initialIncidents: Incident[] = [
   {
     id: "INC-2847",
@@ -8,6 +11,7 @@ export const initialIncidents: Incident[] = [
     severity: "critical",
     status: "investigating",
     createdAt: "2 min ago",
+    rawCreatedAt: minutesAgo(2),
     summary: "Elevated payment failures after release v2.8.1.",
     assignee: "Incident Manager",
   },
@@ -18,6 +22,7 @@ export const initialIncidents: Incident[] = [
     severity: "high",
     status: "identified",
     createdAt: "18 min ago",
+    rawCreatedAt: minutesAgo(18),
     summary: "Concurrent orders can reserve the same final item.",
     assignee: "Code Fixer",
   },
@@ -28,6 +33,7 @@ export const initialIncidents: Incident[] = [
     severity: "medium",
     status: "monitoring",
     createdAt: "1 hour ago",
+    rawCreatedAt: minutesAgo(60),
     summary: "Database query time increased during peak traffic.",
     assignee: "Log Analyzer",
   },
@@ -38,6 +44,7 @@ export const initialIncidents: Incident[] = [
     severity: "low",
     status: "resolved",
     createdAt: "3 hours ago",
+    rawCreatedAt: minutesAgo(180),
     summary: "A stale signing secret caused partner webhook failures.",
     assignee: "Testing Agent",
   },

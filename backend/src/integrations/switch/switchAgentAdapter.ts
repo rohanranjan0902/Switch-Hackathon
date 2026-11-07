@@ -106,7 +106,9 @@ export class SwitchAgentAdapterImpl implements SwitchAgentAdapter {
     }
 
     if (!this.orchestrator) {
-      throw new SwitchNotConfiguredError("Incident orchestrator is not bound to Switch adapter.");
+      throw new SwitchNotConfiguredError(
+        "Incident orchestrator is not bound to Switch adapter.",
+      );
     }
 
     // 1. Post notification to Switch Room

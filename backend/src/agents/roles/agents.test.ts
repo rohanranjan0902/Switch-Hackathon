@@ -89,4 +89,3 @@ test("TestingAgent rejects malformed code patch", async () => {
   assert.equal(testResult.status, "FAILED");
   assert.equal(testResult.failedCount, 1);
 });
-
