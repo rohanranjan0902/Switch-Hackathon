@@ -61,7 +61,6 @@ export class TelegramService {
   private readonly botToken: string;
   private readonly roleTokens = new Map<AgentPersonaKey, string>();
   private knownChatIds = new Set<string>();
-  private lastUpdateId = 0;
   private actionHandler?: (action: string, incidentKey: string) => Promise<string>;
 
   constructor() {
@@ -103,9 +102,9 @@ export class TelegramService {
    * Broadcast message to all discovered Telegram chats
    */
   async broadcast(text: string, options?: TelegramMessageOptions): Promise<void> {
-    if (this.knownChatIds.size === 0) {
+    if (this.knownChatIds.size === 0 && this.allActiveTokens.length > 0) {
       // Attempt to poll once to find any recent /start
-      await this.pollUpdates();
+      await this.pollUpdatesForToken(this.allActiveTokens[0]);
     }
 
     const promises = Array.from(this.knownChatIds).map((chatId) =>
@@ -174,11 +173,21 @@ export class TelegramService {
   }
 
   private isPolling = false;
+  private lastUpdateIds = new Map<string, number>();
+
+  private get allActiveTokens(): string[] {
+    const tokens = new Set<string>();
+    if (this.botToken) tokens.add(this.botToken);
+    for (const token of this.roleTokens.values()) {
+      if (token) tokens.add(token);
+    }
+    return Array.from(tokens);
+  }
 
   startPolling(): void {
-    if (!this.botToken || this.isPolling || process.env.NODE_ENV === "test") return;
+    if (this.allActiveTokens.length === 0 || this.isPolling || process.env.NODE_ENV === "test") return;
     this.isPolling = true;
-    console.log("[telegram] Sequential long-polling loop started.");
+    console.log(`[telegram] Sequential long-polling loop started for ${this.allActiveTokens.length} bot(s).`);
     void this.pollLoop();
   }
 
@@ -189,7 +198,9 @@ export class TelegramService {
   private async pollLoop(): Promise<void> {
     while (this.isPolling) {
       try {
-        await this.pollUpdates();
+        for (const token of this.allActiveTokens) {
+          await this.pollUpdatesForToken(token);
+        }
       } catch {
         // Sleep briefly on connection error before next cycle
         await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -197,9 +208,9 @@ export class TelegramService {
     }
   }
 
-  private async pollUpdates(): Promise<void> {
-    if (!this.botToken) return;
+  private async pollUpdatesForToken(token: string): Promise<void> {
     try {
+      const lastId = this.lastUpdateIds.get(token) ?? 0;
       const data = await requestTelegram<
         Array<{
           update_id: number;
@@ -214,14 +225,14 @@ export class TelegramService {
             message?: { chat: { id: number }; message_id: number };
           };
         }>
-      >(this.botToken, "GET", `getUpdates?offset=${this.lastUpdateId + 1}&timeout=10`);
+      >(token, "GET", `getUpdates?offset=${lastId + 1}&timeout=2`);
 
       if (!data.ok || !Array.isArray(data.result)) {
         return;
       }
 
       for (const update of data.result) {
-        this.lastUpdateId = Math.max(this.lastUpdateId, update.update_id);
+        this.lastUpdateIds.set(token, Math.max(lastId, update.update_id));
 
         if (update.message) {
           const chatId = String(update.message.chat.id);
@@ -234,7 +245,7 @@ export class TelegramService {
           const command = rawText.split(" ")[0].split("@")[0].toLowerCase();
           console.log(`[telegram] Received message "${rawText}" (command: "${command}") from chat ${chatId}`);
 
-          if (command === "/start" || command === "/help" || rawText.includes("devops_incident_2026_bot") || isNew) {
+          if (command === "/start" || command === "/help" || isNew) {
             const welcomeText = isGroup
               ? `🤝 <b>DevOps AI Incident War Room Connected!</b>\n\n` +
                 `This Telegram group is now registered as the active war room for the human engineer and the AI squad.\n\n` +
@@ -249,7 +260,7 @@ export class TelegramService {
                 `You will receive real-time incident triage alerts, AI-generated code patches, and test proofs directly in this chat.\n\n` +
                 `<i>Ready for incident investigation...</i>`;
 
-            await this.sendMessage(chatId, welcomeText, {
+            await this.sendMessageWithToken(token, chatId, welcomeText, {
               reply_markup: {
                 inline_keyboard: [
                   [{ text: "🚀 Investigate INC-2847", callback_data: "trigger:INC-2847" }],
@@ -260,7 +271,8 @@ export class TelegramService {
             const parts = rawText.split(" ").filter(Boolean);
             const targetKey = parts[1] || "INC-2847";
             if (this.actionHandler) {
-              await this.sendMessage(
+              await this.sendMessageWithToken(
+                token,
                 chatId,
                 `🚀 <b>Initiating Incident Squad Investigation for <code>${targetKey}</code>...</b>\n<i>AI agents are joining the war room channel...</i>`,
               );
@@ -269,7 +281,7 @@ export class TelegramService {
           } else if (command === "/status") {
             if (this.actionHandler) {
               const statusNote = await this.actionHandler("status", "");
-              await this.sendMessage(chatId, statusNote);
+              await this.sendMessageWithToken(token, chatId, statusNote);
             }
           }
         }
@@ -280,14 +292,15 @@ export class TelegramService {
 
           if (this.actionHandler && incidentKey) {
             const resultNote = await this.actionHandler(action, incidentKey);
-            await requestTelegram(this.botToken, "POST", "answerCallbackQuery", {
+            await requestTelegram(token, "POST", "answerCallbackQuery", {
               callback_query_id: update.callback_query.id,
               text: resultNote,
             });
 
             if (update.callback_query.message && action !== "trigger") {
               const statusEmoji = action === "approve" ? "✅" : "🛑";
-              await this.sendMessage(
+              await this.sendMessageWithToken(
+                token,
                 update.callback_query.message.chat.id,
                 `${statusEmoji} <b>Patch for ${incidentKey} was ${action.toUpperCase()}D by ${update.callback_query.from.first_name} via Telegram!</b>`,
               );
