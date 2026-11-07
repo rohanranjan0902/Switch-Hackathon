@@ -169,3 +169,4 @@ docker compose up --build
 - **Sample Microservice Tests**: 2 passing tests reproducing and verifying checkout fix (`src/checkout.test.ts`).
 - **Frontend Tests**: 9 passing tests verifying view models, diff parser, state transitions, and approval bindings (`api.test.ts`, `flows.test.ts`, `UnifiedDiffViewer.test.ts`).
 - **Total**: **28 / 28 automated tests passing (100% green)**.
+

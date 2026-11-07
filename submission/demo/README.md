@@ -34,3 +34,4 @@ The demonstration video showcases the genuine end-to-end incident response workf
 - [`SUBTITLES/subtitles.srt`](./SUBTITLES/subtitles.srt): Synchronized 30-cue English subtitle file.
 - [`VIDEO_ASSETS/`](./VIDEO_ASSETS/): Motion graphics source templates (`scene1_opening.html`, `scene2_problem.html`, `scene5_telegram.html`, `scene10_closing.html`).
 - [`scripts/`](./scripts/): Automated browser capture, audio synthesis, and FFmpeg assembly pipeline scripts.
+
