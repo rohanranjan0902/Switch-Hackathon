@@ -54,7 +54,7 @@ html, body {
 }
 
 /* ============================================================
-   ATMOSPHERIC HARDWARE BACKGROUND (CYBER TOPOLOGY & BLUEPRINT)
+   ATMOSPHERIC HARDWARE BACKGROUND
    ============================================================ */
 .ambient-background {
   position: fixed;
@@ -70,21 +70,21 @@ html, body {
   top: -160px;
   left: 50%;
   transform: translateX(-50%);
-  width: 1100px;
-  height: 480px;
-  background: radial-gradient(ellipse 65% 45% at 50% 30%, rgba(0, 240, 255, 0.09) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 80%);
-  filter: blur(55px);
+  width: 1200px;
+  height: 500px;
+  background: radial-gradient(ellipse 65% 45% at 50% 30%, rgba(0, 240, 255, 0.08) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 80%);
+  filter: blur(60px);
 }
 
 .ambient-background::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 25v10M25 30h10' stroke='rgba(255,255,255,0.06)' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 25v10M25 30h10' stroke='rgba(255,255,255,0.05)' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E");
   background-size: 60px 60px;
   mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, black 45%, transparent 90%);
   -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, black 45%, transparent 90%);
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 #topology-canvas {
@@ -100,9 +100,9 @@ html, body {
    ============================================================ */
 .cockpit-header {
   position: relative;
-  z-index: 20;
+  z-index: 25;
   height: 52px;
-  background: rgba(10, 13, 20, 0.85);
+  background: rgba(10, 13, 20, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
@@ -111,25 +111,18 @@ html, body {
   justify-content: space-between;
   padding: 0 20px;
   width: 100%;
-}
-
-.brand-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
   flex-shrink: 0;
 }
 
 .brand-emblem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 12px 5px 8px;
+  gap: 9px;
+  padding: 6px 12px 6px 9px;
   background: linear-gradient(180deg, #181E2C 0%, #0E121B 100%);
   border: 1px solid var(--border-interactive);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -147,35 +140,15 @@ html, body {
 }
 
 .brand-emblem svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   fill: var(--signal-cyan);
-  filter: drop-shadow(0 0 5px var(--signal-cyan));
+  filter: drop-shadow(0 0 6px var(--signal-cyan));
   transition: transform 0.3s ease;
 }
 
 .brand-emblem:hover svg {
   transform: scale(1.15) rotate(6deg);
-}
-
-.system-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-
-.system-breadcrumb .separator {
-  color: var(--text-faint);
-}
-
-.system-breadcrumb .active-target {
-  color: var(--text-high);
-  font-weight: 700;
-  letter-spacing: -0.01em;
 }
 
 .status-dock {
@@ -226,7 +199,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
+  padding: 4px 9px;
   background: #131722;
   border: 1px solid var(--border-interactive);
   border-radius: 6px;
@@ -259,42 +232,40 @@ html, body {
 }
 
 .operator-avatar {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%);
-  color: #060709;
+  background: linear-gradient(135deg, #00F0FF 0%, #6366F1 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9.5px;
   font-weight: 800;
+  color: #06080C;
 }
 
 /* ============================================================
-   COCKPIT THREE-COLUMN GRID (NON-OVERFLOWING)
+   APP SHELL LAYOUT: SIDEBAR + MAIN VIEWPORT
    ============================================================ */
-.cockpit-grid {
-  display: grid;
-  grid-template-columns: 210px minmax(0, 1fr) 340px;
+.app-shell {
+  display: flex;
   width: 100vw;
   height: calc(100vh - 52px);
   overflow: hidden;
   position: relative;
-  z-index: 1;
+  z-index: 10;
 }
 
-/* LEFT NAVIGATION DOCK */
-.cockpit-aside {
-  background: rgba(10, 13, 20, 0.7);
-  backdrop-filter: blur(12px);
+.app-sidebar {
+  width: 220px;
+  background: rgba(10, 13, 20, 0.75);
+  backdrop-filter: blur(14px);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 16px 12px;
-  overflow: hidden;
-  min-width: 0;
+  flex-shrink: 0;
 }
 
 .nav-group-label {
@@ -304,21 +275,21 @@ html, body {
   text-transform: uppercase;
   color: var(--text-dim);
   padding: 6px 10px;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .nav-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 9px 12px;
   border-radius: 6px;
   color: var(--text-medium);
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   border: 1px solid transparent;
   width: 100%;
   text-align: left;
@@ -340,7 +311,7 @@ html, body {
 .nav-btn-inner {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -348,11 +319,9 @@ html, body {
   font-family: var(--font-mono);
   font-size: 9.5px;
   font-weight: 800;
-  padding: 1px 6px;
+  padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(244, 63, 94, 0.15);
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  color: var(--signal-crimson);
+  border: 1px solid;
   white-space: nowrap;
 }
 
@@ -382,25 +351,24 @@ html, body {
   justify-content: space-between;
 }
 
-/* CENTER STAGE: TELEMETRY & WORKSPACE */
-.cockpit-main {
-  padding: 18px 22px 75px 22px; /* room for bottom dock */
+.main-viewport {
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 24px 32px 100px 32px; /* 100px bottom clearance for floating dock */
   min-width: 0;
 }
 
-/* SPOTLIGHT CARD & HOVER GLARE */
+/* ============================================================
+   SPOTLIGHT CARD & HOVER GLARE
+   ============================================================ */
 .spotlight-card {
   position: relative;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.25s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease;
   min-width: 0;
 }
 
@@ -423,12 +391,14 @@ html, body {
   border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* INCIDENT HERO HEADS-UP DISPLAY (HUD) */
+/* ============================================================
+   INCIDENT HERO HEADS-UP DISPLAY (HUD)
+   ============================================================ */
 .incident-hero-hud {
   background: linear-gradient(180deg, #111520 0%, #0B0E16 100%);
   border: 1px solid var(--border-interactive);
-  border-radius: 9px;
-  padding: 18px 22px;
+  border-radius: 10px;
+  padding: 20px 24px;
   position: relative;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
@@ -439,7 +409,7 @@ html, body {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3.5px;
+  width: 4px;
   background: linear-gradient(180deg, #F43F5E 0%, #E11D48 100%);
   box-shadow: 0 0 14px var(--signal-crimson);
 }
@@ -448,10 +418,10 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   position: relative;
   z-index: 2;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -459,18 +429,18 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .badge-p0 {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   background: rgba(244, 63, 94, 0.12);
   border: 1px solid rgba(244, 63, 94, 0.4);
   color: var(--signal-crimson);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   padding: 3px 8px;
   border-radius: 4px;
@@ -479,7 +449,7 @@ html, body {
 
 .incident-ticket-id {
   font-family: var(--font-mono);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--text-pure);
   white-space: nowrap;
@@ -487,7 +457,7 @@ html, body {
 
 .blast-radius-tag {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-dim);
   white-space: nowrap;
 }
@@ -536,27 +506,27 @@ html, body {
 }
 
 .hud-headline {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--text-pure);
-  margin-bottom: 6px;
-  line-height: 1.25;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  padding-bottom: 2px;
   position: relative;
   z-index: 2;
+  word-break: break-word;
 }
 
 .hud-subline {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   font-size: 12.5px;
   color: var(--text-medium);
   position: relative;
   z-index: 2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .code-chip {
@@ -565,11 +535,13 @@ html, body {
   background: var(--surface-sunken);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 2px 7px;
   color: var(--signal-cyan);
 }
 
-/* KINETIC 4-AGENT STEPPER PIPELINE */
+/* ============================================================
+   KINETIC 4-AGENT STEPPER PIPELINE
+   ============================================================ */
 .pipeline-wrapper {
   display: flex;
   flex-direction: column;
@@ -581,7 +553,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -590,21 +562,22 @@ html, body {
 
 .pipeline-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
   min-width: 0;
 }
 
 .agent-card {
-  padding: 12px 14px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   position: relative;
   z-index: 2;
   min-width: 0;
-  border-radius: 8px;
+  border-radius: 9px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .agent-card:hover {
@@ -647,7 +620,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -656,11 +629,12 @@ html, body {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1;
 }
 
 .icon-cube {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   background: #171E2D;
   border: 1px solid #283348;
@@ -678,21 +652,19 @@ html, body {
 }
 
 .agent-title {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-pure);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .state-badge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 3px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -716,14 +688,10 @@ html, body {
 }
 
 .card-detail {
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 11.5px;
+  line-height: 1.45;
   color: var(--text-medium);
-  min-height: 30px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  min-height: 32px;
 }
 
 .card-foot {
@@ -733,7 +701,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--text-dim);
   gap: 4px;
 }
@@ -748,12 +716,14 @@ html, body {
   flex-shrink: 0;
 }
 
-/* UNIFIED GIT DIFF ENGINE */
+/* ============================================================
+   UNIFIED MONACO-STYLE GIT DIFF ENGINE
+   ============================================================ */
 .diff-container {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid var(--border-subtle);
   background: var(--surface-card);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
@@ -769,6 +739,7 @@ html, body {
   justify-content: space-between;
   gap: 10px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .diff-title-cluster {
@@ -776,7 +747,7 @@ html, body {
   align-items: center;
   gap: 10px;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -789,7 +760,7 @@ html, body {
   color: var(--signal-emerald);
   font-weight: 800;
   background: rgba(16, 185, 129, 0.12);
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 3px;
 }
 
@@ -797,24 +768,24 @@ html, body {
   color: var(--signal-crimson);
   font-weight: 800;
   background: rgba(244, 63, 94, 0.12);
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 3px;
 }
 
 .diff-viewport {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.6;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 240px;
+  max-height: 280px;
   background: var(--surface-sunken);
   color: #CBD5E1;
 }
 
 .diff-row {
   display: flex;
-  padding: 1.5px 12px;
+  padding: 2px 14px;
   border-left: 3px solid transparent;
   transition: background-color 0.1s ease;
   white-space: nowrap;
@@ -828,7 +799,7 @@ html, body {
   background: rgba(0, 240, 255, 0.04);
   color: var(--signal-cyan);
   font-size: 10.5px;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-top: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
   font-weight: 600;
@@ -847,7 +818,7 @@ html, body {
 }
 
 .gutter-num-old, .gutter-num-new {
-  width: 32px;
+  width: 34px;
   color: var(--text-faint);
   user-select: none;
   text-align: right;
@@ -867,62 +838,29 @@ html, body {
   flex: 1;
 }
 
-/* RIGHT RAIL: TELEGRAM WAR ROOM STREAM */
-.war-room-rail {
-  background: rgba(10, 13, 20, 0.7);
-  backdrop-filter: blur(12px);
-  border-left: 1px solid var(--border-subtle);
+/* ============================================================
+   COLLAPSIBLE TELEGRAM WAR ROOM SLIDE-OVER DRAWER
+   ============================================================ */
+.war-room-drawer {
+  position: fixed;
+  top: 52px;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: rgba(11, 14, 22, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border-interactive);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  min-width: 0;
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.6);
+  z-index: 40;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.rail-topbar {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.rail-heading {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-pure);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.chat-scroll-canvas {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-}
-
-.message-bubble {
-  background: var(--surface-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 7px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  animation: message-reveal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  transition: all 0.2s ease;
-}
-
-.message-bubble:hover {
-  border-color: var(--border-interactive);
+.war-room-drawer.open {
+  transform: translateX(0);
 }
 
 @keyframes message-reveal {
@@ -930,11 +868,15 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.message-bubble {
+  animation: message-reveal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .bubble-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .sender-handle {
@@ -947,62 +889,89 @@ html, body {
 
 .msg-timestamp {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 9.5px;
   color: var(--text-dim);
   flex-shrink: 0;
 }
 
-.bubble-content {
-  font-size: 12px;
-  color: var(--text-high);
-  line-height: 1.4;
-}
-
-.gate-action-panel {
-  padding: 14px 16px;
-  background: #0B0E15;
-  border-top: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.gate-prompt {
-  font-size: 10.5px;
-  color: var(--signal-amber);
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* ============================================================
+   TACTILE MECHANICAL BUTTONS & KEYCAPS
+   ============================================================ */
+.keycap {
+  background: linear-gradient(180deg, #242C3E 0%, #171C28 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  color: var(--text-pure);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.btn-mechanical {
+  background: #151A24;
+  border: 1px solid var(--border-interactive);
+  color: var(--text-high);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
-.gate-btn-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.btn-mechanical:hover {
+  background: #1C2331;
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--text-pure);
+  transform: translateY(-1px);
+}
+
+.btn-mechanical:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.btn-mechanical.primary-cta {
+  background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+  border-color: #059669;
+  color: #050608;
+  font-weight: 800;
+  box-shadow: 0 2px 8px var(--signal-emerald-glow);
+}
+
+.btn-mechanical.primary-cta:hover {
+  background: linear-gradient(180deg, #14C78C 0%, #059669 100%);
+  box-shadow: 0 4px 14px var(--signal-emerald-glow);
 }
 
 /* ============================================================
-   FEATURE A: RAYCAST-STYLE FLOATING ACTION DOCK
+   RAYCAST FLOATING ACTION DOCK
    ============================================================ */
 .raycast-action-dock {
   position: fixed;
-  bottom: 12px;
+  bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
-  height: 42px;
+  height: 44px;
   background: rgba(14, 18, 26, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  padding: 0 6px;
-  gap: 5px;
+  padding: 0 8px;
+  gap: 6px;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255,255,255,0.06);
   z-index: 50;
 }
@@ -1010,13 +979,13 @@ html, body {
 .dock-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 11px;
-  border-radius: 7px;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-high);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1054,69 +1023,13 @@ html, body {
 
 .dock-divider {
   width: 1px;
-  height: 18px;
+  height: 20px;
   background: rgba(255, 255, 255, 0.12);
-  margin: 0 2px;
-}
-
-.keycap {
-  background: linear-gradient(180deg, #242C3E 0%, #171C28 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--text-pure);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  display: inline-block;
-  line-height: 1.2;
-}
-
-.btn-mechanical {
-  background: #151A24;
-  border: 1px solid var(--border-interactive);
-  color: var(--text-high);
-  font-family: var(--font-display);
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 5px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-}
-
-.btn-mechanical:hover {
-  background: #1C2331;
-  border-color: rgba(255, 255, 255, 0.25);
-  color: var(--text-pure);
-}
-
-.btn-mechanical:active {
-  transform: translateY(1px) scale(0.97);
-}
-
-.btn-mechanical.primary-cta {
-  background: linear-gradient(180deg, #10B981 0%, #059669 100%);
-  border-color: #059669;
-  color: #050608;
-  font-weight: 800;
-  box-shadow: 0 2px 8px var(--signal-emerald-glow);
-}
-
-.btn-mechanical.primary-cta:hover {
-  background: linear-gradient(180deg, #14C78C 0%, #059669 100%);
-  box-shadow: 0 4px 14px var(--signal-emerald-glow);
+  margin: 0 3px;
 }
 
 /* ============================================================
-   FEATURE D: INTERACTIVE COMMAND PALETTE (CMD + K)
+   INTERACTIVE COMMAND PALETTE (CMD + K)
    ============================================================ */
 .palette-overlay {
   position: fixed;
@@ -1161,7 +1074,7 @@ html, body {
 }
 
 .palette-list {
-  max-height: 300px;
+  max-height: 320px;
   overflow-y: auto;
   padding: 6px;
   display: flex;
