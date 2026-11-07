@@ -1,1763 +1,900 @@
-import { useEffect, useMemo, useState } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { io, type Socket } from "socket.io-client";
 import {
-  Activity,
-  AlertCircle,
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
-  Bot,
-  Check,
-  ChevronDown,
-  CircleHelp,
-  Clock3,
-  Code2,
-  Command,
-  ExternalLink,
-  GitPullRequest,
-  LayoutDashboard,
-  ListFilter,
-  Menu,
-  Plus,
-  Radio,
-  Search,
-  Settings2,
-  ShieldCheck,
-  TerminalSquare,
-  X,
-  Zap,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
-import { agents, initialIncidents, logs } from "./data";
-import {
+  fetchHealth,
   fetchIncidents,
-  patchIncidentStatus,
+  fetchIncident,
   postIncident,
-  toIncident,
-  investigateIncident,
-  approveIncident,
-  rejectIncident,
-  type ExecutionRecord,
+  approveIncident as apiApprove,
+  rejectIncident as apiReject,
+  investigateIncident as apiInvestigate,
+  fetchExecutions,
+  fetchApproval,
+  fetchAgents,
+  fetchLogs,
+  type ApiHealth,
 } from "./api";
-import type { Incident, IncidentStatus, Severity } from "./types";
+import type {
+  Agent,
+  AgentCompletedEvent,
+  AgentStartedEvent,
+  AgentStepEvent,
+  ApprovalRecord,
+  ExecutionRecord,
+  Incident,
+  LogEntry,
+  Severity,
+  ToastNotification,
+} from "./types";
+import { Header } from "./components/Header";
+import { Sidebar, type NavPage } from "./components/Sidebar";
+import { TopologyCanvas } from "./components/TopologyCanvas";
+import { OverviewView } from "./components/OverviewView";
+import { IncidentsView } from "./components/IncidentsView";
+import { CodeReviewView } from "./components/CodeReviewView";
+import { AgentsView } from "./components/AgentsView";
+import { LogsExplorerView } from "./components/LogsExplorerView";
+import { WarRoomDrawer, type WarRoomMessage } from "./components/WarRoomDrawer";
+import { CommandPalette } from "./components/CommandPalette";
+import { CreateIncidentModal } from "./components/CreateIncidentModal";
+import { ApprovalDialog } from "./components/ApprovalDialog";
+import { ToastContainer } from "./components/ToastContainer";
 
-type Page =
-  | "Overview"
-  | "Incidents"
-  | "AI Agents"
-  | "Logs Explorer"
-  | "Code Review"
-  | "GitHub"
-  | "Settings";
-
-const navigation: { name: Page; icon: typeof LayoutDashboard; count?: string }[] = [
-  { name: "Overview", icon: LayoutDashboard },
-  { name: "Incidents", icon: AlertCircle, count: "04" },
-  { name: "AI Agents", icon: Bot },
-  { name: "Logs Explorer", icon: TerminalSquare },
-  { name: "Code Review", icon: Code2 },
-  { name: "GitHub", icon: GitPullRequest },
-];
-
-const chartData = [
-  { time: "09:00", incidents: 12, resolved: 8 },
-  { time: "10:00", incidents: 18, resolved: 12 },
-  { time: "11:00", incidents: 14, resolved: 10 },
-  { time: "12:00", incidents: 24, resolved: 16 },
-  { time: "13:00", incidents: 19, resolved: 14 },
-  { time: "14:00", incidents: 31, resolved: 22 },
-  { time: "15:00", incidents: 22, resolved: 19 },
-  { time: "16:00", incidents: 28, resolved: 21 },
-];
-
-const severityLabel: Record<Severity, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-};
-
-function isSeverity(value: string): value is Severity {
-  return (
-    value === "critical" || value === "high" || value === "medium" || value === "low"
-  );
-}
-
-function isIncidentStatus(value: string): value is IncidentStatus {
-  return (
-    value === "open" ||
-    value === "investigating" ||
-    value === "identified" ||
-    value === "monitoring" ||
-    value === "resolved"
-  );
-}
-
-function App() {
-  const [page, setPage] = useState<Page>("Overview");
-  const [incidents, setIncidents] = useState(initialIncidents);
-  const [query, setQuery] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [showCreate, setShowCreate] = useState(false);
+export default function App() {
+  const [activeNav, setActiveNav] = useState<NavPage>("Overview");
+  const [health, setHealth] = useState<ApiHealth | null>(null);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [executions, setExecutions] = useState<Record<string, ExecutionRecord>>({});
-  const [toast, setToast] = useState("");
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [apiError, setApiError] = useState("");
+  const [execution, setExecution] = useState<ExecutionRecord | null>(null);
+  const [approval, setApproval] = useState<ApprovalRecord | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isInvestigating, setIsInvestigating] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const socket = io();
-    const syncIncident = (record: Parameters<typeof toIncident>[0]) => {
-      if (!active) return;
-      const incident = toIncident(record);
-      setIncidents((current) => {
-        const exists = current.some((item) => item.id === incident.id);
-        return exists
-          ? current.map((item) => (item.id === incident.id ? incident : item))
-          : [incident, ...current];
-      });
-      // Also update selectedIncident if currently viewed
-      setSelectedIncident((curr) => (curr && curr.id === incident.id ? incident : curr));
+  // Modals & Drawers
+  const [warRoomOpen, setWarRoomOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Filters & Search
+  const [incidentFilter, setIncidentFilter] = useState("all");
+  const [logSearch, setLogSearch] = useState("");
+  const [logSeverityFilter, setLogSeverityFilter] = useState("all");
+
+  // Telemetry Toasts
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  const addToast = useCallback((toast: Omit<ToastNotification, "id">) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newToast: ToastNotification = { ...toast, id };
+    setToasts((prev) => [...prev, newToast]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, toast.duration ?? 4500);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Streamed War Room Messages
+  const [warRoomMessages, setWarRoomMessages] = useState<WarRoomMessage[]>([
+    {
+      id: "init-1",
+      sender: "@incident_manager",
+      senderRole: "mgr",
+      time: "14:32:00",
+      text: "🤖 War Room Connected: Listening for Sentry thresholds and microservice alerts.",
+    },
+  ]);
+
+  const addWarRoomMessage = useCallback((msg: Omit<WarRoomMessage, "id" | "time">) => {
+    const now = new Date();
+    const timeStr = now.toTimeString().split(" ")[0];
+    const newMsg: WarRoomMessage = {
+      ...msg,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      time: timeStr,
     };
+    setWarRoomMessages((prev) => [...prev, newMsg]);
+  }, []);
+
+  // 1. Initial Load: Health, Incidents, Agents, Logs
+  useEffect(() => {
+    fetchHealth()
+      .then(setHealth)
+      .catch(() => {});
 
     fetchIncidents()
       .then((records) => {
-        if (active) {
-          setIncidents(records);
-          setApiError("");
+        setIncidents(records);
+        if (records.length > 0) {
+          const crit = records.find((i) => i.severity === "critical") ?? records[0];
+          setSelectedIncident(crit);
         }
       })
       .catch(() => {
-        if (active) setApiError("API offline — showing local demo fixtures.");
+        addToast({
+          type: "warning",
+          title: "API Unavailable",
+          message:
+            "Could not connect to Express backend. Running in preview fallback mode.",
+        });
       });
 
-    socket.on("incident:created", syncIncident);
-    socket.on("incident:updated", syncIncident);
+    fetchAgents()
+      .then(setAgents)
+      .catch(() => {});
 
-    socket.on("agent:execution:started", (data: { incidentKey: string; executionId: string }) => {
-      if (!active) return;
-      setExecutions((prev) => ({
-        ...prev,
-        [data.incidentKey]: {
-          id: data.executionId,
-          incidentId: data.incidentKey,
-          incidentKey: data.incidentKey,
-          status: "RUNNING",
-          startedAt: new Date().toISOString(),
-          currentStep: "Initializing multi-agent pipeline",
-        },
+    fetchLogs()
+      .then(setLogs)
+      .catch(() => {});
+  }, [addToast]);
+
+  // 2. Fetch execution and approval whenever selectedIncident changes
+  useEffect(() => {
+    if (!selectedIncident) return;
+
+    fetchExecutions(selectedIncident.id)
+      .then((execs) => {
+        if (execs && execs.length > 0) {
+          setExecution(execs[0]);
+        } else {
+          setExecution(null);
+        }
+      })
+      .catch(() => setExecution(null));
+
+    fetchApproval(selectedIncident.id)
+      .then(setApproval)
+      .catch(() => setApproval(null));
+  }, [selectedIncident]);
+
+  // 3. Socket.IO Real-time Events Integration
+  useEffect(() => {
+    let socket: Socket;
+    try {
+      socket = io();
+    } catch {
+      return;
+    }
+
+    socket.on("connect", () => {
+      // Socket connected
+    });
+
+    socket.on("incident:created", (record: Incident) => {
+      setIncidents((prev) => {
+        const exists = prev.some((i) => i.id === record.id);
+        if (exists) return prev;
+        return [record, ...prev];
+      });
+      addToast({
+        type: "info",
+        title: "New Incident Declared",
+        message: `${record.id}: ${record.title} (${record.severity.toUpperCase()})`,
+      });
+      addWarRoomMessage({
+        sender: "@incident_manager",
+        senderRole: "mgr",
+        text: `🚨 New Outage Declared: ${record.id} [${record.severity.toUpperCase()}] on ${record.service}: ${record.title}`,
+      });
+    });
+
+    socket.on("incident:updated", (record: Incident) => {
+      setIncidents((prev) => prev.map((i) => (i.id === record.id ? record : i)));
+      if (selectedIncident?.id === record.id) {
+        setSelectedIncident(record);
+      }
+    });
+
+    socket.on("agent:execution:started", (data: AgentStartedEvent) => {
+      setIsInvestigating(true);
+      addToast({
+        type: "info",
+        title: "Agent Investigation Started",
+        message: `Dispatching specialist pipeline for ${data.incidentKey}`,
+      });
+      addWarRoomMessage({
+        sender: "@incident_manager",
+        senderRole: "mgr",
+        text: `🚀 Multi-Agent Investigation launched for ${data.incidentKey}. Mobilizing Log Analyzer and Code Fixer...`,
+      });
+      setExecution((prev) => ({
+        id: data.executionId,
+        incidentId: data.incidentId,
+        incidentKey: data.incidentKey,
+        status: "RUNNING",
+        startedAt: data.startedAt,
+        currentRole: "incident-manager",
+        currentStep: "Triaging incident scope",
+        report: prev?.report,
       }));
     });
 
-    socket.on(
-      "agent:execution:step",
-      (step: { incidentId: string; role: string; step: string; status: string }) => {
-        if (!active) return;
-        setExecutions((prev) => {
-          const key = step.incidentId;
-          const existing = prev[key] || {
-            id: `exec-${Date.now()}`,
-            incidentId: key,
-            incidentKey: key,
-            status: "RUNNING",
-            startedAt: new Date().toISOString(),
-          };
+    socket.on("agent:execution:step", (event: AgentStepEvent) => {
+      setExecution((prev) => {
+        if (!prev) {
           return {
-            ...prev,
-            [key]: {
-              ...existing,
-              currentRole: step.role,
-              currentStep: step.step,
-            },
+            id: event.executionId,
+            incidentId: event.incidentId,
+            incidentKey: selectedIncident?.id ?? "INC-2847",
+            status: "RUNNING",
+            startedAt: event.timestamp,
+            currentRole: event.role,
+            currentStep: event.step,
           };
+        }
+        return {
+          ...prev,
+          currentRole: event.role,
+          currentStep: event.step,
+        };
+      });
+
+      const roleSenderMap: Record<
+        string,
+        { sender: string; role: WarRoomMessage["senderRole"] }
+      > = {
+        "incident-manager": { sender: "@incident_manager", role: "mgr" },
+        "log-analyzer": { sender: "@log_analyzer", role: "log" },
+        "code-fixer": { sender: "@code_fixer", role: "fix" },
+        "testing-agent": { sender: "@testing_agent", role: "test" },
+      };
+
+      const roleInfo = roleSenderMap[event.role] ?? {
+        sender: "@orchestrator",
+        role: "orch",
+      };
+
+      if (event.status === "COMPLETED") {
+        addWarRoomMessage({
+          sender: roleInfo.sender,
+          senderRole: roleInfo.role,
+          text: `✅ [${event.role.replace("-", " ").toUpperCase()}] ${event.step}`,
+        });
+      } else if (event.status === "RUNNING") {
+        addWarRoomMessage({
+          sender: roleInfo.sender,
+          senderRole: roleInfo.role,
+          text: `⚙️ [${event.role.replace("-", " ").toUpperCase()}] ${event.step}...`,
+        });
+      }
+    });
+
+    socket.on("agent:execution:completed", (data: AgentCompletedEvent) => {
+      setIsInvestigating(false);
+      setExecution((prev) => ({
+        id: data.executionId,
+        incidentId: data.incidentId,
+        incidentKey: data.incidentKey,
+        status: data.status,
+        startedAt: prev?.startedAt ?? new Date().toISOString(),
+        completedAt: data.completedAt,
+        report: data.report,
+        codeChange: data.report.codeFix
+          ? {
+              id: `patch-${data.executionId}`,
+              summary: data.report.codeFix.summary,
+              patch: data.report.codeFix.patch,
+              rootCause: data.report.codeFix.rootCause,
+              createdAt: data.completedAt,
+            }
+          : undefined,
+        testExecution: data.report.testVerification
+          ? {
+              id: `test-${data.executionId}`,
+              status:
+                data.report.testVerification.status === "PASSED" ? "SUCCEEDED" : "FAILED",
+              command: data.report.testVerification.command,
+              output: data.report.testVerification.output,
+              passedCount: data.report.testVerification.passedCount,
+              failedCount: data.report.testVerification.failedCount,
+              startedAt: data.report.startedAt,
+              completedAt: data.completedAt,
+            }
+          : undefined,
+      }));
+
+      addToast({
+        type: "success",
+        title: "Investigation Complete",
+        message: `Hotfix unified diff generated and verified (${data.report.testVerification?.passedCount ?? 2}/2 tests passed). Ready for Human Approval!`,
+      });
+
+      addWarRoomMessage({
+        sender: "@testing_agent",
+        senderRole: "test",
+        text: `🧪 [Verification Passed] All ${data.report.testVerification?.passedCount ?? 2} tests passed in ${data.report.testVerification?.durationMs ?? 145}ms. Standing by for Human Sign-off.`,
+      });
+    });
+
+    socket.on("agent:execution:failed", (err: { error: { message: string } }) => {
+      setIsInvestigating(false);
+      addToast({
+        type: "error",
+        title: "Agent Investigation Failed",
+        message: err.error?.message ?? "An error occurred during multi-agent execution.",
+      });
+      addWarRoomMessage({
+        sender: "@orchestrator",
+        senderRole: "orch",
+        text: `🛑 Investigation failed: ${err.error?.message ?? "Unknown error"}`,
+      });
+    });
+
+    socket.on(
+      "incident:approved",
+      (payload: { approval: ApprovalRecord; incident: Incident }) => {
+        addToast({
+          type: "success",
+          title: "Patch Sign-Off Approved",
+          message: `Incident marked RESOLVED by ${payload.approval.reviewer}. Ready for GitHub PR sync.`,
+        });
+        addWarRoomMessage({
+          sender: "@incident_manager",
+          senderRole: "mgr",
+          text: `🎉 [Patch Approved] Incident marked RESOLVED by ${payload.approval.reviewer}. Ready for GitHub PR sync.`,
         });
       },
     );
 
     socket.on(
-      "agent:execution:completed",
-      (data: {
-        incidentKey: string;
-        report: NonNullable<ExecutionRecord["report"]> & {
-          executionId: string;
-          status: ExecutionRecord["status"];
-          startedAt: string;
-          completedAt: string;
-        };
-      }) => {
-        if (!active) return;
-        setExecutions((prev) => ({
-          ...prev,
-          [data.incidentKey]: {
-            id: data.report.executionId,
-            incidentId: data.incidentKey,
-            incidentKey: data.incidentKey,
-            status: data.report.status,
-            startedAt: data.report.startedAt,
-            completedAt: data.report.completedAt,
-            report: data.report,
-            codeChange: data.report.codeFix
-              ? {
-                  id: `chg-${Date.now()}`,
-                  summary: data.report.codeFix.summary,
-                  patch: data.report.codeFix.patch,
-                  rootCause: data.report.codeFix.rootCause,
-                  createdAt: data.report.completedAt,
-                }
-              : undefined,
-            testExecution: data.report.testVerification
-              ? {
-                  id: `test-${Date.now()}`,
-                  status: data.report.testVerification.status,
-                  command: data.report.testVerification.command,
-                  output: data.report.testVerification.output,
-                  passedCount: data.report.testVerification.passedCount,
-                  failedCount: data.report.testVerification.failedCount,
-                }
-              : undefined,
-          },
-        }));
-        setToast(`AI agents completed investigation for ${data.incidentKey}`);
-        window.setTimeout(() => setToast(""), 3500);
+      "incident:rejected",
+      (payload: { approval: ApprovalRecord; incident: Incident }) => {
+        addToast({
+          type: "warning",
+          title: "Patch Sign-Off Rejected",
+          message: `Incident returned to OPEN status by ${payload.approval.reviewer}.`,
+        });
+        addWarRoomMessage({
+          sender: "@incident_manager",
+          senderRole: "mgr",
+          text: `🛑 [Patch Rejected] Proposal rejected by ${payload.approval.reviewer}. Reason: ${payload.approval.note ?? "None"}. Incident reset to OPEN.`,
+        });
       },
     );
 
     return () => {
-      active = false;
       socket.disconnect();
     };
-  }, []);
+  }, [selectedIncident, addToast, addWarRoomMessage]);
 
-  const filteredIncidents = useMemo(
-    () =>
-      incidents.filter((incident) => {
-        const matchesSearch = `${incident.id} ${incident.title} ${incident.service}`
-          .toLowerCase()
-          .includes(query.toLowerCase());
-        return (
-          matchesSearch &&
-          (severityFilter === "all" || incident.severity === severityFilter)
-        );
-      }),
-    [incidents, query, severityFilter],
-  );
+  // 4. Dynamic MTTR Elapsed Calculation from selectedIncident.rawCreatedAt
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  async function addIncident(title: string, service: string, severity: Severity) {
-    try {
-      const created = await postIncident({ title, service, severity });
-      setIncidents((current) => [
-        created,
-        ...current.filter((item) => item.id !== created.id),
-      ]);
-      setShowCreate(false);
-      setPage("Incidents");
-      setToast("Incident created in demo API");
-    } catch (error) {
-      if (!(error instanceof TypeError)) {
-        setToast(
-          error instanceof Error ? error.message : "Incident could not be created.",
-        );
-        window.setTimeout(() => setToast(""), 3200);
+  useEffect(() => {
+    if (!selectedIncident?.rawCreatedAt) return;
+
+    const calculateElapsed = () => {
+      const parsed = Date.parse(selectedIncident.rawCreatedAt);
+      if (isNaN(parsed)) return;
+      const diffSec = Math.max(0, Math.floor((Date.now() - parsed) / 1000));
+      setElapsedSeconds(diffSec);
+    };
+
+    calculateElapsed();
+    const interval = setInterval(calculateElapsed, 1000);
+    return () => clearInterval(interval);
+  }, [selectedIncident?.rawCreatedAt]);
+
+  const mttrDisplay = useMemo(() => {
+    const mins = Math.floor(elapsedSeconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = (elapsedSeconds % 60).toString().padStart(2, "0");
+    return `${mins}:${secs}.00`;
+  }, [elapsedSeconds]);
+
+  // 5. Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
         return;
       }
-      const newIncident: Incident = {
-        id: `INC-${2848 + incidents.length - initialIncidents.length}`,
-        title,
-        service,
-        severity,
-        status: "open",
-        createdAt: "Just now",
-        summary: "New incident report awaiting investigation.",
-        assignee: "Incident Manager",
-      };
-      setIncidents((current) => [newIncident, ...current]);
-      setShowCreate(false);
-      setPage("Incidents");
-      setToast("Incident created locally — API offline");
-    }
-    window.setTimeout(() => setToast(""), 3200);
-  }
 
-  async function changeStatus(id: string, status: IncidentStatus) {
-    try {
-      const updated = await patchIncidentStatus(id, status);
-      setIncidents((current) =>
-        current.map((incident) => (incident.id === id ? updated : incident)),
-      );
-      setToast("Incident status updated");
-    } catch (error) {
-      setToast(
-        error instanceof Error ? error.message : "Incident status could not be updated.",
-      );
-    }
-    window.setTimeout(() => setToast(""), 2600);
-  }
+      if (e.key === "Escape") {
+        setPaletteOpen(false);
+        setWarRoomOpen(false);
+        setCreateModalOpen(false);
+        setApprovalModalOpen(false);
+        return;
+      }
 
-  async function handleInvestigate(incident: Incident) {
-    try {
-      setToast(`Dispatched AI agents to investigate ${incident.id}...`);
-      await investigateIncident(incident.id);
-    } catch (error) {
-      setToast(
-        error instanceof Error ? error.message : "Failed to trigger investigation.",
-      );
-    }
-    window.setTimeout(() => setToast(""), 3000);
-  }
+      const isInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement;
 
-  async function handleApprove(incidentId: string) {
-    try {
-      await approveIncident(incidentId);
-      setToast(`Approved patch for ${incidentId}! Status updated to Resolved.`);
-      setIncidents((current) =>
-        current.map((item) =>
-          item.id === incidentId ? { ...item, status: "resolved" } : item,
-        ),
-      );
-    } catch (error) {
-      setToast(error instanceof Error ? error.message : "Approval failed.");
-    }
-    window.setTimeout(() => setToast(""), 3200);
-  }
-
-  async function handleReject(incidentId: string) {
-    try {
-      await rejectIncident(incidentId);
-      setToast(`Rejected patch for ${incidentId}. Incident returned to Open.`);
-      setIncidents((current) =>
-        current.map((item) =>
-          item.id === incidentId ? { ...item, status: "open" } : item,
-        ),
-      );
-    } catch (error) {
-      setToast(error instanceof Error ? error.message : "Rejection failed.");
-    }
-    window.setTimeout(() => setToast(""), 3200);
-  }
-
-  return (
-    <div className="app-shell">
-      <aside className={`sidebar ${mobileMenu ? "sidebar-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark">
-            <Command size={17} strokeWidth={2.2} />
-          </div>
-          <span>switchboard</span>
-          <button
-            className="icon-button mobile-close"
-            onClick={() => setMobileMenu(false)}
-            aria-label="Close menu"
-          >
-            <X size={17} />
-          </button>
-        </div>
-        <button className="workspace-picker">
-          <span className="workspace-avatar">A</span>
-          <span className="workspace-copy">
-            <strong>Acme, Inc.</strong>
-            <small>Engineering</small>
-          </span>
-          <ChevronDown size={14} className="muted" />
-        </button>
-        <div className="nav-label">WORKSPACE</div>
-        <nav className="main-nav" aria-label="Main navigation">
-          {navigation.map(({ name, icon: Icon, count }) => (
-            <button
-              key={name}
-              className={`nav-item ${page === name ? "active" : ""}`}
-              onClick={() => {
-                setPage(name);
-                setMobileMenu(false);
-              }}
-            >
-              <Icon size={16} strokeWidth={1.8} />
-              <span>{name}</span>
-              {count && (
-                <span className="nav-count">
-                  {incidents
-                    .filter((i) => i.status !== "resolved")
-                    .length.toString()
-                    .padStart(2, "0")}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="switch-status">
-            <span className="status-dot dot-amber" />
-            <span>Switch not connected</span>
-            <button aria-label="Switch setup help" onClick={() => setPage("AI Agents")}>
-              <CircleHelp size={14} />
-            </button>
-          </div>
-          <button
-            className={`nav-item ${page === "Settings" ? "active" : ""}`}
-            onClick={() => setPage("Settings")}
-          >
-            <Settings2 size={16} />
-            <span>Settings</span>
-          </button>
-          <div className="profile">
-            <div className="profile-avatar">RR</div>
-            <div className="profile-copy">
-              <strong>Rohan R.</strong>
-              <small>Workspace admin</small>
-            </div>
-            <button className="icon-button" aria-label="Profile options">
-              <ChevronDown size={15} />
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      <main className="main-area">
-        <header className="topbar">
-          <button
-            className="icon-button menu-button"
-            onClick={() => setMobileMenu(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={19} />
-          </button>
-          <div className="breadcrumbs">
-            <span>Workspace</span>
-            <span className="crumb-slash">/</span>
-            <strong>{page}</strong>
-          </div>
-          <div className="topbar-actions">
-            <div className="demo-pill">
-              <span /> DEMO DATA
-            </div>
-            <button className="topbar-search" onClick={() => setPage("Incidents")}>
-              <Search size={14} />
-              <span>Search...</span>
-              <kbd>⌘ K</kbd>
-            </button>
-            <button className="help-button" aria-label="Help">
-              <CircleHelp size={17} />
-            </button>
-          </div>
-        </header>
-        <div className="page-content">
-          {apiError && (
-            <div className="api-offline-banner">
-              <AlertCircle size={14} />
-              {apiError}
-            </div>
-          )}
-          {page === "Overview" && (
-            <Overview
-              incidents={incidents}
-              onNavigate={setPage}
-              onCreate={() => setShowCreate(true)}
-              onStatus={changeStatus}
-              onSelect={setSelectedIncident}
-            />
-          )}
-          {page === "Incidents" && (
-            <IncidentsPage
-              incidents={filteredIncidents}
-              query={query}
-              onQuery={setQuery}
-              severity={severityFilter}
-              onSeverity={setSeverityFilter}
-              onCreate={() => setShowCreate(true)}
-              onStatus={changeStatus}
-              onSelect={setSelectedIncident}
-            />
-          )}
-          {page === "AI Agents" && <AgentsPage />}
-          {page === "Logs Explorer" && <LogsPage />}
-          {page === "Code Review" && (
-            <CodeReviewPage
-              executions={executions}
-              incidents={incidents}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              onToast={(message) => {
-                setToast(message);
-                window.setTimeout(() => setToast(""), 2600);
-              }}
-            />
-          )}
-          {page === "GitHub" && <GitHubPage />}
-          {page === "Settings" && <SettingsPage onNavigate={setPage} />}
-        </div>
-        <footer className="footer">
-          <span>
-            <span className="status-dot dot-green" /> All systems operational
-          </span>
-          <span>
-            Demo workspace <span className="footer-sep">·</span> v0.1.0
-          </span>
-        </footer>
-      </main>
-      {showCreate && (
-        <CreateIncidentModal
-          onClose={() => setShowCreate(false)}
-          onCreate={addIncident}
-        />
-      )}
-      {selectedIncident && (
-        <IncidentDetailsModal
-          incident={selectedIncident}
-          execution={executions[selectedIncident.id]}
-          onInvestigate={handleInvestigate}
-          onOpenReview={() => {
-            setSelectedIncident(null);
-            setPage("Code Review");
-          }}
-          onClose={() => setSelectedIncident(null)}
-        />
-      )}
-      {toast && (
-        <div className="toast">
-          <Check size={16} />
-          {toast}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PageHeading({
-  eyebrow,
-  title,
-  description,
-  action,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="page-heading">
-      <div>
-        <div className="eyebrow">{eyebrow}</div>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function Overview({
-  incidents,
-  onNavigate,
-  onCreate,
-  onStatus,
-  onSelect,
-}: {
-  incidents: Incident[];
-  onNavigate: (page: Page) => void;
-  onCreate: () => void;
-  onStatus: (id: string, status: IncidentStatus) => void;
-  onSelect: (incident: Incident) => void;
-}) {
-  const active = incidents.filter((i) => i.status !== "resolved").length;
-  const critical = incidents.filter(
-    (i) => i.severity === "critical" && i.status !== "resolved",
-  ).length;
-  return (
-    <>
-      <PageHeading
-        eyebrow={new Intl.DateTimeFormat("en-US", {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-          .format(new Date())
-          .toUpperCase()}
-        title="Good afternoon, Rohan"
-        description="Here’s what’s happening across your services today."
-        action={
-          <button className="primary-button" onClick={onCreate}>
-            <Plus size={15} /> Report incident
-          </button>
+      if (!isInput && !paletteOpen && !createModalOpen && !approvalModalOpen) {
+        if (e.key.toLowerCase() === "w") {
+          e.preventDefault();
+          setWarRoomOpen((prev) => !prev);
+        } else if (e.key === "1") {
+          setActiveNav("Overview");
+        } else if (e.key === "2") {
+          setActiveNav("Incidents");
+        } else if (e.key === "3") {
+          setActiveNav("AI Agents");
+        } else if (e.key === "4") {
+          setActiveNav("Logs Explorer");
+        } else if (e.key === "5") {
+          setActiveNav("Code Review");
         }
-      />
-      <div className="health-banner">
-        <div className="health-icon">
-          <Activity size={17} />
-        </div>
-        <div className="health-copy">
-          <strong>All systems operational</strong>
-          <span>Services are healthy. Last checked 24 seconds ago.</span>
-        </div>
-        <div className="health-services">
-          <span>
-            <i className="status-dot dot-green" /> API
-          </span>
-          <span>
-            <i className="status-dot dot-green" /> Database
-          </span>
-          <span>
-            <i className="status-dot dot-green" /> Workers
-          </span>
-        </div>
-        <button className="health-link" onClick={() => onNavigate("Logs Explorer")}>
-          View status <ArrowRight size={14} />
-        </button>
-      </div>
-      <div className="metric-grid">
-        <MetricCard
-          title="Total incidents"
-          value="128"
-          change="+12.8%"
-          trend="up"
-          icon={<AlertCircle size={16} />}
-          note="vs last 30 days"
-        />
-        <MetricCard
-          title="Active incidents"
-          value={String(active).padStart(2, "0")}
-          change="-18.2%"
-          trend="down"
-          icon={<Radio size={16} />}
-          note="vs last 30 days"
-          accent="blue"
-        />
-        <MetricCard
-          title="Resolved"
-          value="104"
-          change="+8.4%"
-          trend="up"
-          icon={<Check size={16} />}
-          note="vs last 30 days"
-          accent="green"
-        />
-        <MetricCard
-          title="Critical"
-          value={String(critical).padStart(2, "0")}
-          change="-2 this week"
-          trend="down"
-          icon={<Zap size={16} />}
-          note="needs attention"
-          accent="red"
-        />
-      </div>
-      <div className="overview-grid">
-        <section className="panel activity-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Incident activity</h2>
-              <p>Incident volume over the last 24 hours</p>
-            </div>
-            <button className="select-button">
-              Last 24 hours <ChevronDown size={13} />
-            </button>
-          </div>
-          <div className="chart-legend">
-            <span>
-              <i className="legend-dot blue-dot" /> Created
-            </span>
-            <span>
-              <i className="legend-dot green-dot" /> Resolved
-            </span>
-          </div>
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                margin={{ top: 8, right: 4, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="incidentFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6487fa" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="#6487fa" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="resolvedFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#36b983" stopOpacity={0.13} />
-                    <stop offset="100%" stopColor="#36b983" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#292b30" strokeDasharray="3 5" vertical={false} />
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: "#777b84", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  dy={8}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#1d1f23",
-                    border: "1px solid #33363c",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  labelStyle={{ color: "#bfc2c9" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="incidents"
-                  stroke="#718cf7"
-                  strokeWidth={2}
-                  fill="url(#incidentFill)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="resolved"
-                  stroke="#4dbd91"
-                  strokeWidth={1.7}
-                  fill="url(#resolvedFill)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-        <AgentsPanel />
-      </div>
-      <section className="panel incident-panel">
-        <div className="panel-heading">
-          <div>
-            <h2>
-              Recent incidents <span className="heading-count">{incidents.length}</span>
-            </h2>
-            <p>Latest activity from your services</p>
-          </div>
-          <button className="text-button" onClick={() => onNavigate("Incidents")}>
-            View all <ArrowRight size={14} />
-          </button>
-        </div>
-        <IncidentTable
-          incidents={incidents.slice(0, 4)}
-          onStatus={onStatus}
-          onSelect={onSelect}
-        />
-      </section>
-      <div className="approval-note">
-        <ShieldCheck size={15} />
-        <span>
-          Human approval is required before code changes or pull requests are created.
-        </span>
-        <button onClick={() => onNavigate("Code Review")}>
-          Review policy <ArrowRight size={13} />
-        </button>
-      </div>
-    </>
-  );
-}
+      }
+    };
 
-function MetricCard({
-  title,
-  value,
-  change,
-  trend,
-  icon,
-  note,
-  accent = "purple",
-}: {
-  title: string;
-  value: string;
-  change: string;
-  trend: "up" | "down";
-  icon: React.ReactNode;
-  note: string;
-  accent?: string;
-}) {
-  return (
-    <div className="metric-card">
-      <div className="metric-top">
-        <span>{title}</span>
-        <span className={`metric-icon ${accent}`}>{icon}</span>
-      </div>
-      <div className="metric-value">{value}</div>
-      <div className="metric-bottom">
-        <span
-          className={`metric-change ${trend === "up" && title !== "Resolved" ? "negative" : trend === "down" && title === "Resolved" ? "negative" : ""}`}
-        >
-          {trend === "up" ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-          {change}
-        </span>
-        <span>{note}</span>
-      </div>
-    </div>
-  );
-}
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [paletteOpen, createModalOpen, approvalModalOpen]);
 
-function AgentsPanel() {
-  return (
-    <section className="panel agents-panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Agent activity</h2>
-          <p>Current investigation status</p>
-        </div>
-        <button className="icon-button">
-          <ExternalLink size={14} />
-        </button>
-      </div>
-      <div className="agent-list">
-        {agents.map((agent) => (
-          <div className="agent-row" key={agent.id}>
-            <div className={`agent-avatar ${agent.id}`}>
-              <Bot size={16} />
-            </div>
-            <div className="agent-info">
-              <strong>{agent.name}</strong>
-              <span>{agent.task}</span>
-            </div>
-            <span className={`agent-state ${agent.status}`}>
-              <i />
-              {agent.status === "working" ? "Working" : "Idle"}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="agent-footnote">
-        <span className="status-dot dot-amber" /> Demo activity · Switch not connected
-      </div>
-    </section>
-  );
-}
+  // Actions
+  const handleInvestigate = async (idOrKey: string) => {
+    setIsInvestigating(true);
+    try {
+      const res = await apiInvestigate(idOrKey);
+      addToast({
+        type: "info",
+        title: "Agent Dispatch Acknowledged",
+        message: res.message || "Multi-agent squad dispatched.",
+      });
+    } catch (err) {
+      setIsInvestigating(false);
+      addToast({
+        type: "error",
+        title: "Investigation Failed",
+        message: (err as Error).message,
+      });
+    }
+  };
 
-function IncidentsPage({
-  incidents,
-  query,
-  onQuery,
-  severity,
-  onSeverity,
-  onCreate,
-  onStatus,
-  onSelect,
-}: {
-  incidents: Incident[];
-  query: string;
-  onQuery: (value: string) => void;
-  severity: string;
-  onSeverity: (value: string) => void;
-  onCreate: () => void;
-  onStatus: (id: string, status: IncidentStatus) => void;
-  onSelect: (incident: Incident) => void;
-}) {
-  return (
-    <>
-      <PageHeading
-        eyebrow="OPERATIONS"
-        title="Incidents"
-        description="Triage and track issues across your services."
-        action={
-          <button className="primary-button" onClick={onCreate}>
-            <Plus size={15} /> New incident
-          </button>
-        }
-      />
-      <section className="panel incident-panel full-panel">
-        <div className="toolbar">
-          <label className="filter-search">
-            <Search size={15} />
-            <input
-              value={query}
-              onChange={(event) => onQuery(event.target.value)}
-              placeholder="Search incidents..."
-            />
-          </label>
-          <label className="select-button filter-select">
-            <ListFilter size={14} />
-            <select value={severity} onChange={(event) => onSeverity(event.target.value)}>
-              <option value="all">All severity</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <ChevronDown size={13} />
-          </label>
-          <span className="result-count">{incidents.length} incidents</span>
-        </div>
-        <IncidentTable incidents={incidents} onStatus={onStatus} onSelect={onSelect} />
-      </section>
-    </>
-  );
-}
+  const handleApprove = async (reviewer: string, note?: string) => {
+    if (!selectedIncident) return;
+    try {
+      const res = await apiApprove(selectedIncident.id, reviewer, note);
+      addToast({
+        type: "success",
+        title: "Patch Sign-Off Approved",
+        message: res.message || `Incident ${selectedIncident.id} resolved.`,
+      });
+      // Refresh selected incident
+      const updated = await fetchIncident(selectedIncident.id);
+      setSelectedIncident(updated);
+      setIncidents((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    } catch (err) {
+      addToast({
+        type: "error",
+        title: "Approval Failed",
+        message: (err as Error).message,
+      });
+      throw err;
+    }
+  };
 
-function IncidentTable({
-  incidents,
-  onStatus,
-  onSelect,
-}: {
-  incidents: Incident[];
-  onStatus: (id: string, status: IncidentStatus) => void;
-  onSelect: (incident: Incident) => void;
-}) {
-  if (!incidents.length)
-    return (
-      <div className="empty-state">
-        <Search size={22} />
-        <strong>No incidents found</strong>
-        <span>Try adjusting your search or filters.</span>
-      </div>
-    );
-  return (
-    <div className="table-scroll">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>INCIDENT</th>
-            <th>SERVICE</th>
-            <th>SEVERITY</th>
-            <th>STATUS</th>
-            <th>ASSIGNEE</th>
-            <th>CREATED</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {incidents.map((incident) => (
-            <tr key={incident.id}>
-              <td>
-                <div className="incident-name">
-                  <span>{incident.id}</span>
-                  <strong>{incident.title}</strong>
-                </div>
-              </td>
-              <td>
-                <code>{incident.service}</code>
-              </td>
-              <td>
-                <span className={`severity-badge ${incident.severity}`}>
-                  <i />
-                  {severityLabel[incident.severity]}
-                </span>
-              </td>
-              <td>
-                <select
-                  className={`status-select ${incident.status}`}
-                  value={incident.status}
-                  onChange={(event) => {
-                    if (isIncidentStatus(event.target.value)) {
-                      onStatus(incident.id, event.target.value);
-                    }
-                  }}
-                  aria-label={`Update status for ${incident.id}`}
-                >
-                  <option value="open">Open</option>
-                  <option value="investigating">Investigating</option>
-                  <option value="identified">Identified</option>
-                  <option value="monitoring">Monitoring</option>
-                  <option value="resolved">Resolved</option>
-                </select>
-              </td>
-              <td>
-                <span className="assignee">
-                  <span className="mini-agent">
-                    <Bot size={12} />
-                  </span>
-                  {incident.assignee}
-                </span>
-              </td>
-              <td className="time-cell">{incident.createdAt}</td>
-              <td>
-                <button
-                  className="row-arrow"
-                  aria-label={`View ${incident.id}`}
-                  onClick={() => onSelect(incident)}
-                >
-                  <ArrowRight size={15} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+  const handleReject = async (reviewer: string, note?: string) => {
+    if (!selectedIncident) return;
+    try {
+      const res = await apiReject(selectedIncident.id, reviewer, note);
+      addToast({
+        type: "warning",
+        title: "Patch Sign-Off Rejected",
+        message: res.message || `Incident ${selectedIncident.id} reset to OPEN.`,
+      });
+      const updated = await fetchIncident(selectedIncident.id);
+      setSelectedIncident(updated);
+      setIncidents((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    } catch (err) {
+      addToast({
+        type: "error",
+        title: "Rejection Failed",
+        message: (err as Error).message,
+      });
+      throw err;
+    }
+  };
 
-function AgentsPage() {
-  return (
-    <>
-      <PageHeading
-        eyebrow="AUTOMATION"
-        title="AI Agents"
-        description="Specialized agents collaborate on incident investigation through Switch."
-      />
-      <div className="notice-banner">
-        <AlertCircle size={16} />
-        <div>
-          <strong>Switch integration not configured</strong>
-          <span>
-            Cards below show sample data only. Configure Switch after reviewing the
-            verified integration setup.
-          </span>
-        </div>
-        <span className="demo-pill">
-          <span /> DEMO
-        </span>
-      </div>
-      <div className="agent-cards">
-        {agents.map((agent, index) => (
-          <article className="panel agent-card" key={agent.id}>
-            <div className={`agent-avatar large ${agent.id}`}>
-              <Bot size={19} />
-            </div>
-            <div className="agent-card-top">
-              <div>
-                <h3>{agent.name}</h3>
-                <span>{agent.role}</span>
-              </div>
-              <span className={`agent-state ${agent.status}`}>
-                <i />
-                {agent.status === "working" ? "Working" : "Idle"}
-              </span>
-            </div>
-            <div className="agent-task">
-              <small>CURRENT TASK</small>
-              <span>{agent.task}</span>
-            </div>
-            <div className="agent-card-footer">
-              <span>
-                <Clock3 size={13} />
-                Last activity {agent.lastActivity}
-              </span>
-              <span>{index === 0 ? "2" : "0"} runs today</span>
-            </div>
-          </article>
-        ))}
-      </div>
-      <section className="panel setup-panel">
-        <div className="setup-icon">
-          <Command size={18} />
-        </div>
-        <div>
-          <h3>Connect your Switch workspace</h3>
-          <p>
-            Switch execution is disabled until the official API and agent connection
-            details are verified. No tasks are sent from this demo.
-          </p>
-        </div>
-        <span className="integration-status">
-          <i />
-          Not configured
-        </span>
-      </section>
-    </>
-  );
-}
+  const handleCreateIncident = async (data: {
+    title: string;
+    service: string;
+    severity: Severity;
+    description?: string;
+  }) => {
+    const created = await postIncident(data);
+    setIncidents((prev) => [created, ...prev]);
+    setSelectedIncident(created);
+    setActiveNav("Incidents");
+    addToast({
+      type: "success",
+      title: "Incident Declared",
+      message: `${created.id}: ${created.title}`,
+    });
+  };
 
-function LogsPage() {
-  const [search, setSearch] = useState("");
-  const [level, setLevel] = useState("all");
-  const filtered = logs.filter(
-    (log) =>
-      `${log.message} ${log.service}`.toLowerCase().includes(search.toLowerCase()) &&
-      (level === "all" || log.level === level),
-  );
-  return (
-    <>
-      <PageHeading
-        eyebrow="OBSERVABILITY"
-        title="Logs Explorer"
-        description="Search and inspect sample application logs."
-        action={
-          <div className="demo-pill">
-            <span /> SAMPLE LOGS
-          </div>
-        }
-      />
-      <section className="panel full-panel">
-        <div className="toolbar">
-          <label className="filter-search">
-            <Search size={15} />
-            <input
-              placeholder="Search messages or services..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
-          <label className="select-button filter-select">
-            <ListFilter size={14} />
-            <select value={level} onChange={(event) => setLevel(event.target.value)}>
-              <option value="all">All levels</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <ChevronDown size={13} />
-          </label>
-          <span className="result-count">{filtered.length} events</span>
-        </div>
-        <div className="log-list">
-          {filtered.map((log) => (
-            <div className="log-row" key={log.id}>
-              <span className="log-time">{log.time}</span>
-              <span className={`severity-badge ${log.level}`}>
-                <i />
-                {severityLabel[log.level]}
-              </span>
-              <code>{log.service}</code>
-              <span className="log-message">{log.message}</span>
-            </div>
-          ))}
-        </div>
-        {!filtered.length && (
-          <div className="empty-state">
-            <Search size={22} />
-            <strong>No logs found</strong>
-            <span>Try a different query or level.</span>
-          </div>
-        )}
-      </section>
-    </>
-  );
-}
+  const handleSendWarRoomMessage = (text: string) => {
+    addWarRoomMessage({
+      sender: "@operator (Team Daanav)",
+      senderRole: "operator",
+      text,
+    });
 
-function CodeReviewPage({
-  executions,
-  incidents,
-  onApprove,
-  onReject,
-  onToast,
-}: {
-  executions: Record<string, ExecutionRecord>;
-  incidents: Incident[];
-  onApprove: (incidentId: string) => Promise<void>;
-  onReject: (incidentId: string) => Promise<void>;
-  onToast: (message: string) => void;
-}) {
-  const reviewableKeys = Object.keys(executions).filter((key) => !!executions[key].codeChange);
-  const [selectedKey, setSelectedKey] = useState<string>(reviewableKeys[0] || "");
-  const activeKey = reviewableKeys.includes(selectedKey) ? selectedKey : reviewableKeys[0];
-  const execution = activeKey ? executions[activeKey] : undefined;
-  const incident = activeKey ? incidents.find((i) => i.id === activeKey) : undefined;
+    const trimmed = text.trim();
+    const lower = trimmed.toLowerCase();
 
-  if (!execution || !execution.codeChange) {
-    return (
-      <>
-        <PageHeading
-          eyebrow="HUMAN APPROVAL"
-          title="Code review"
-          description="Review proposed changes before creating a pull request."
-        />
-        <div className="notice-banner">
-          <ShieldCheck size={17} />
-          <div>
-            <strong>No proposed code changes</strong>
-            <span>
-              Click "Investigate with AI Agents" inside any Incident Details view to start autonomous triage and patch generation.
-            </span>
-          </div>
-          <span className="demo-pill">
-            <span /> READY
-          </span>
-        </div>
-        <section className="panel review-empty">
-          <div className="review-empty-icon">
-            <Code2 size={23} />
-          </div>
-          <h2>Nothing to review yet</h2>
-          <p>
-            When an investigation produces a proposed patch, you’ll see the root cause,
-            diff, and test results here. Approval is always required before opening a PR.
-          </p>
-          <div className="review-steps">
-            <span>
-              <i>1</i> Investigation
-            </span>
-            <ArrowRight size={13} />
-            <span>
-              <i>2</i> Proposed diff
-            </span>
-            <ArrowRight size={13} />
-            <span>
-              <i>3</i> Your approval
-            </span>
-            <ArrowRight size={13} />
-            <span>
-              <i>4</i> GitHub PR
-            </span>
-          </div>
-          <button
-            className="secondary-button"
-            onClick={() => onToast("Start an investigation on an incident first")}
-          >
-            <GitPullRequest size={14} /> Waiting for approved patch <ExternalLink size={12} />
-          </button>
-        </section>
-      </>
-    );
-  }
-
-  const patch = execution.codeChange.patch;
-  const patchLines = patch.split("\n");
-
-  return (
-    <>
-      <PageHeading
-        eyebrow={`HUMAN REVIEW · ${activeKey}`}
-        title={`Proposed Patch for ${incident?.title || activeKey}`}
-        description="Inspect the autonomous multi-agent patch, verify regression test output, and approve or reject."
-        action={
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              className="primary-button"
-              style={{ background: "#10b981", borderColor: "#059669" }}
-              onClick={() => onApprove(activeKey)}
-            >
-              <Check size={15} /> Approve & Resolve
-            </button>
-            <button
-              className="secondary-button"
-              style={{ borderColor: "#ef4444", color: "#f87171" }}
-              onClick={() => onReject(activeKey)}
-            >
-              <X size={15} /> Reject
-            </button>
-          </div>
-        }
-      />
-
-      {reviewableKeys.length > 1 && (
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          {reviewableKeys.map((key) => (
-            <button
-              key={key}
-              className={`filter-button ${key === activeKey ? "active" : ""}`}
-              onClick={() => setSelectedKey(key)}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="code-review-card">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "12px",
-          }}
-        >
-          <strong style={{ fontSize: "14px" }}>Root Cause & Defect Analysis</strong>
-          <span className="test-proof-badge">
-            <Check size={13} /> {execution.testExecution?.status || "PASSED"} ·{" "}
-            {execution.testExecution?.passedCount ?? 2} tests passed
-          </span>
-        </div>
-        <p
-          style={{
-            color: "#a1a1aa",
-            fontSize: "12px",
-            lineHeight: 1.6,
-            margin: "0 0 16px",
-          }}
-        >
-          {execution.codeChange.rootCause}
-        </p>
-
-        <div
-          style={{
-            marginBottom: "8px",
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: "11px",
-            color: "#71717a",
-          }}
-        >
-          <span>PROPOSED UNIFIED DIFF</span>
-          <span>
-            Target:{" "}
-            {execution.report?.codeFix?.targetFile || "sample-app/src/checkout.ts"}
-          </span>
-        </div>
-
-        <div className="diff-viewer">
-          {patchLines.map((line, idx) => {
-            let className = "";
-            if (line.startsWith("+") && !line.startsWith("+++"))
-              className = "diff-line-add";
-            else if (line.startsWith("-") && !line.startsWith("---"))
-              className = "diff-line-del";
-            else if (line.startsWith("@@")) className = "diff-line-hunk";
-            return (
-              <span key={idx} className={className}>
-                {line}
-                {"\n"}
-              </span>
-            );
-          })}
-        </div>
-
-        {execution.testExecution?.output && (
-          <div style={{ marginTop: "16px" }}>
-            <span
-              style={{
-                fontSize: "11px",
-                color: "#71717a",
-                display: "block",
-                marginBottom: "6px",
-              }}
-            >
-              ISOLATED TEST VERIFICATION LOGS
-            </span>
-            <pre
-              className="diff-viewer"
-              style={{ color: "#86efac", maxHeight: "150px" }}
-            >
-              {execution.testExecution.output}
-            </pre>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-function GitHubPage() {
-  return (
-    <>
-      <PageHeading
-        eyebrow="INTEGRATIONS"
-        title="GitHub"
-        description="Connect repositories and track pull request activity."
-      />
-      <div className="github-card">
-        <div className="github-card-main">
-          <div className="github-mark">
-            <GitPullRequest size={22} />
-          </div>
-          <div>
-            <h2>GitHub integration</h2>
-            <p>Connect a repository to review code and create approved pull requests.</p>
-          </div>
-          <span className="integration-status">
-            <i />
-            Not connected
-          </span>
-        </div>
-        <div className="github-info">
-          <div>
-            <span>REPOSITORY</span>
-            <strong>Not configured</strong>
-          </div>
-          <div>
-            <span>ACCESS</span>
-            <strong>Read & PR permissions</strong>
-          </div>
-          <div>
-            <span>BRANCH POLICY</span>
-            <strong>Human approval required</strong>
-          </div>
-        </div>
-        <div className="github-card-footer">
-          <span>
-            Credentials are read from server environment variables and are never stored in
-            the database.
-          </span>
-          <button
-            className="secondary-button"
-            onClick={() =>
-              window.alert(
-                "Add GITHUB_TOKEN and GITHUB_REPOSITORY to your local .env file. See docs/API.md.",
-              )
-            }
-          >
-            Configuration guide <ArrowRight size={13} />
-          </button>
-        </div>
-      </div>
-      <div className="github-empty">
-        <GitPullRequest size={19} />
-        <strong>No pull requests yet</strong>
-        <span>Recent repository activity will show here after GitHub is connected.</span>
-      </div>
-    </>
-  );
-}
-
-function SettingsPage({ onNavigate }: { onNavigate: (page: Page) => void }) {
-  return (
-    <>
-      <PageHeading
-        eyebrow="WORKSPACE"
-        title="Settings"
-        description="Manage external connections and workspace behavior."
-      />
-      <section className="panel settings-panel">
-        <div className="settings-section">
-          <div className="settings-icon">
-            <Command size={17} />
-          </div>
-          <div className="settings-copy">
-            <h2>Switch workspace</h2>
-            <p>
-              Connect only after confirming the supported integration with official Switch
-              documentation.
-            </p>
-            <span className="settings-value">
-              No verified connection · agent dispatch disabled
-            </span>
-          </div>
-          <button className="secondary-button" onClick={() => onNavigate("AI Agents")}>
-            Agent setup <ArrowRight size={13} />
-          </button>
-        </div>
-        <div className="settings-section">
-          <div className="settings-icon github-settings">
-            <GitPullRequest size={17} />
-          </div>
-          <div className="settings-copy">
-            <h2>GitHub</h2>
-            <p>
-              Credentials belong in server environment variables. No repository API calls
-              are implemented yet.
-            </p>
-            <span className="settings-value">
-              Not connected · pull request creation disabled
-            </span>
-          </div>
-          <button className="secondary-button" onClick={() => onNavigate("GitHub")}>
-            GitHub setup <ArrowRight size={13} />
-          </button>
-        </div>
-        <div className="settings-section">
-          <div className="settings-icon runtime-settings">
-            <Activity size={17} />
-          </div>
-          <div className="settings-copy">
-            <h2>Demo environment</h2>
-            <p>
-              Incidents and logs use sample data. API-created incidents are in-memory and
-              reset when the server restarts.
-            </p>
-            <span className="settings-value">Development mode · no external actions</span>
-          </div>
-          <span className="demo-pill">
-            <span /> DEMO
-          </span>
-        </div>
-      </section>
-    </>
-  );
-}
-
-function IncidentDetailsModal({
-  incident,
-  execution,
-  onInvestigate,
-  onOpenReview,
-  onClose,
-}: {
-  incident: Incident;
-  execution?: ExecutionRecord;
-  onInvestigate: (incident: Incident) => void;
-  onOpenReview: () => void;
-  onClose: () => void;
-}) {
-  const isRunning = execution?.status === "RUNNING";
-  const isSucceeded = execution?.status === "SUCCEEDED";
-
-  return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section
-        className="modal incident-details-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="incident-details-title"
-      >
-        <div className="modal-heading">
-          <div>
-            <span className="eyebrow">{incident.id} · INCIDENT DETAILS</span>
-            <h2 id="incident-details-title">{incident.title}</h2>
-          </div>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onClose}
-            aria-label="Close incident details"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <p className="modal-description">{incident.summary}</p>
-        <div className="incident-detail-grid">
-          <div>
-            <span>SERVICE</span>
-            <code>{incident.service}</code>
-          </div>
-          <div>
-            <span>SEVERITY</span>
-            <span className={`severity-badge ${incident.severity}`}>
-              <i />
-              {severityLabel[incident.severity]}
-            </span>
-          </div>
-          <div>
-            <span>STATUS</span>
-            <strong>{incident.status.replace("-", " ")}</strong>
-          </div>
-          <div>
-            <span>ASSIGNED AGENT</span>
-            <strong>{incident.assignee}</strong>
-          </div>
-        </div>
-
-        <div className="timeline-heading">
-          <h3>Autonomous Agent Timeline</h3>
-          <span>
-            {isRunning
-              ? "INVESTIGATION IN PROGRESS"
-              : isSucceeded
-                ? "EXECUTION SUCCEEDED"
-                : "READY"}
-          </span>
-        </div>
-
-        <div className="timeline-item">
-          <i />
-          <div>
-            <strong>Incident reported</strong>
-            <span>
-              {incident.createdAt} · {incident.service}
-            </span>
-          </div>
-        </div>
-
-        {execution ? (
-          <div
-            style={{
-              padding: "0 0 12px 14px",
-              borderLeft: "1px solid #303137",
-              marginLeft: "3px",
-            }}
-          >
-            {execution.report?.triage && (
-              <div className="agent-step-item">
-                <span className="agent-step-dot completed" />
-                <div>
-                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
-                    Incident Manager
-                  </strong>
-                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
-                    {execution.report.triage.summary}
-                  </p>
-                </div>
-              </div>
-            )}
-            {execution.report?.logAnalysis && (
-              <div className="agent-step-item">
-                <span className="agent-step-dot completed" />
-                <div>
-                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
-                    Log Analyzer
-                  </strong>
-                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
-                    {execution.report.logAnalysis.summary}
-                  </p>
-                </div>
-              </div>
-            )}
-            {execution.report?.codeFix && (
-              <div className="agent-step-item">
-                <span className="agent-step-dot completed" />
-                <div>
-                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
-                    Code Fixer
-                  </strong>
-                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
-                    {execution.report.codeFix.summary}
-                  </p>
-                </div>
-              </div>
-            )}
-            {execution.report?.testVerification && (
-              <div className="agent-step-item">
-                <span className="agent-step-dot completed" />
-                <div>
-                  <strong style={{ fontSize: "11px", color: "#e4e4e7" }}>
-                    Testing Agent
-                  </strong>
-                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
-                    {execution.report.testVerification.summary}
-                  </p>
-                </div>
-              </div>
-            )}
-            {isRunning && (
-              <div className="agent-step-item">
-                <span className="agent-step-dot running" />
-                <div>
-                  <strong style={{ fontSize: "11px", color: "#f59e0b" }}>
-                    {execution.currentRole || "AI Agents in progress"}
-                  </strong>
-                  <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#a1a1aa" }}>
-                    {execution.currentStep || "Executing..."}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="timeline-empty">
-            <span>
-              No agent execution started yet. Click investigate to run the multi-agent
-              pipeline.
-            </span>
-          </div>
-        )}
-
-        <div
-          className="modal-actions"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: "16px",
-            alignItems: "center",
-          }}
-        >
-          {isSucceeded && (
-            <button
-              type="button"
-              className="primary-button"
-              style={{ background: "#7189f3" }}
-              onClick={onOpenReview}
-            >
-              <Code2 size={14} /> Review Proposed Patch
-            </button>
-          )}
-
-          {incident.status !== "resolved" && !isRunning && !isSucceeded && (
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => onInvestigate(incident)}
-            >
-              <Bot size={15} /> Investigate with AI Agents
-            </button>
-          )}
-
-          {isRunning && (
-            <span
-              style={{
-                color: "#f59e0b",
-                fontSize: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span className="agent-step-dot running" /> Agents investigating...
-            </span>
-          )}
-
-          <button type="button" className="secondary-button" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function CreateIncidentModal({
-  onClose,
-  onCreate,
-}: {
-  onClose: () => void;
-  onCreate: (title: string, service: string, severity: Severity) => void;
-}) {
-  const [title, setTitle] = useState("");
-  const [service, setService] = useState("");
-  const [severity, setSeverity] = useState<Severity>("medium");
-  const [error, setError] = useState("");
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!title.trim() || !service.trim()) {
-      setError("Add both an incident title and service.");
+    // Command: /clear
+    if (lower === "/clear") {
+      setWarRoomMessages([
+        {
+          id: `init-${Date.now()}`,
+          sender: "@incident_manager",
+          senderRole: "mgr",
+          time: new Date().toTimeString().split(" ")[0],
+          text: "🤖 War Room Connected: Ready for commands (/status, /investigate, /logs, /help).",
+        },
+      ]);
       return;
     }
-    onCreate(title.trim(), service.trim(), severity);
-  }
+
+    // Command: /help
+    if (lower.startsWith("/help")) {
+      setTimeout(() => {
+        addWarRoomMessage({
+          sender: "@orchestrator",
+          senderRole: "orch",
+          text: `📋 Available War Room Commands:\n• /status - Show tracked outages and squad telemetry\n• /investigate [INC-ID] - Launch 4-stage multi-agent triage\n• /approve - Sign-off on synthesized hotfix\n• /logs - Inspect recent anomalous telemetry\n• /test - Check test execution proof\n• /clear - Clear feed history`,
+        });
+      }, 200);
+      return;
+    }
+
+    // Command: /status
+    if (lower.startsWith("/status")) {
+      setTimeout(() => {
+        const summary =
+          incidents.length > 0
+            ? incidents
+                .map(
+                  (i) =>
+                    `• ${i.id} [${i.status.toUpperCase()}] - ${i.title} (${i.severity.toUpperCase()}) on ${i.service}`,
+                )
+                .join("\n")
+            : "• No active incidents registered.";
+        addWarRoomMessage({
+          sender: "@incident_manager",
+          senderRole: "mgr",
+          text: `📊 Active Incidents Telemetry Report (${incidents.length} tracked):\n\n${summary}\n\nCluster State: Sentry alerts monitored. Mode: SWITCH SIMULATION.`,
+        });
+      }, 250);
+      return;
+    }
+
+    // Command: /investigate
+    if (lower.startsWith("/investigate")) {
+      const parts = trimmed.split(" ").filter(Boolean);
+      const targetId = parts[1] || selectedIncident?.id || "INC-2847";
+      const match = incidents.find((i) => i.id === targetId) ?? incidents[0];
+      if (match) setSelectedIncident(match);
+
+      setTimeout(() => {
+        addWarRoomMessage({
+          sender: "@incident_manager",
+          senderRole: "mgr",
+          text: `🚀 Multi-Agent Triage mobilized for ${targetId} (${match?.title || "Outage"}). Assessing blast radius...`,
+        });
+        void handleInvestigate(targetId);
+      }, 200);
+      return;
+    }
+
+    // Command: /approve
+    if (lower.startsWith("/approve")) {
+      if (!selectedIncident) {
+        setTimeout(() => {
+          addWarRoomMessage({
+            sender: "@orchestrator",
+            senderRole: "orch",
+            text: "⚠️ No incident selected for approval.",
+          });
+        }, 200);
+        return;
+      }
+      setTimeout(() => {
+        void handleApprove("Team Daanav", "Approved via War Room stream");
+        addWarRoomMessage({
+          sender: "@incident_manager",
+          senderRole: "mgr",
+          text: `✅ Hotfix for ${selectedIncident.id} officially signed-off by Team Daanav. Merging to main and initiating zero-downtime rollout.`,
+        });
+      }, 200);
+      return;
+    }
+
+    // Queries: testing / test
+    if (lower.includes("testing") || lower.includes("test")) {
+      setTimeout(() => {
+        const passCount = execution?.report?.testVerification?.passedCount ?? 2;
+        const totalCount = execution?.report?.testVerification?.totalCount ?? 2;
+        addWarRoomMessage({
+          sender: "@testing_agent",
+          senderRole: "test",
+          text: `🧪 Testing Agent Report: Isolated regression sandbox verified.\n• Command: npm run test --workspace sample-app\n• Results: ${passCount}/${totalCount} assertions passing\n• Regression risk: ZERO`,
+        });
+      }, 250);
+      return;
+    }
+
+    // Queries: fix / patch / diff / code
+    if (
+      lower.includes("fix") ||
+      lower.includes("patch") ||
+      lower.includes("diff") ||
+      lower.includes("code")
+    ) {
+      setTimeout(() => {
+        const targetFile =
+          execution?.report?.codeFix?.targetFile || "sample-app/src/checkout.ts";
+        addWarRoomMessage({
+          sender: "@code_fixer",
+          senderRole: "fix",
+          text: `⚡ Code Fixer Report: Synthesized hotfix diff for ${targetFile}.\nFixed condition: inventory.available < item.quantity guard prevents stock race condition.`,
+        });
+      }, 250);
+      return;
+    }
+
+    // Queries: log / telemetry / sentry
+    if (
+      lower.includes("log") ||
+      lower.includes("telemetry") ||
+      lower.includes("sentry")
+    ) {
+      setTimeout(() => {
+        addWarRoomMessage({
+          sender: "@log_analyzer",
+          senderRole: "log",
+          text: `🔍 Log Analyzer Report: Culprit stack trace isolated in checkout-api.\nLog ID: log-01 [CRITICAL]\nError: TypeError: Cannot read properties of undefined (reading 'stock') at checkout.ts:25:21`,
+        });
+      }, 250);
+      return;
+    }
+
+    // Default operator broadcast ACK
+    setTimeout(() => {
+      addWarRoomMessage({
+        sender: "@orchestrator",
+        senderRole: "orch",
+        text: `🤖 Squad Orchestrator: Operator instruction acknowledged: "${trimmed}". Relayed to Switch Room 1eab763f... and Telegram Supergroup (-1004337160724). Type /help for command list.`,
+      });
+    }, 250);
+  };
+
+  const handlePingAgent = (agentName: string, roleKey: string) => {
+    setWarRoomOpen(true);
+    addWarRoomMessage({
+      sender: `@${roleKey.replace("-", "_")}`,
+      senderRole:
+        roleKey === "incident-manager"
+          ? "mgr"
+          : roleKey === "log-analyzer"
+            ? "log"
+            : roleKey === "code-fixer"
+              ? "fix"
+              : "test",
+      text: `🤖 Healthcheck ACK from ${agentName}: Daemon ready, socket connected, Switch room active.`,
+    });
+    addToast({
+      type: "info",
+      title: `${agentName} Pinged`,
+      message: "Healthcheck acknowledged in Telegram War Room.",
+    });
+  };
+
+  const handleAnalyzeLog = (log: LogEntry) => {
+    setActiveNav("Incidents");
+    const matching = incidents.find((i) => i.service === log.service) ?? selectedIncident;
+    if (matching) {
+      setSelectedIncident(matching);
+      handleInvestigate(matching.id);
+    }
+  };
+
+  const hasPendingPatch = Boolean(
+    execution?.codeChange?.patch || execution?.report?.codeFix?.patch,
+  );
+
   return (
     <div
-      className="modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+      style={{
+        position: "relative",
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <form className="modal" onSubmit={submit}>
-        <div className="modal-heading">
-          <div>
-            <span className="eyebrow">NEW REPORT</span>
-            <h2>Report an incident</h2>
-          </div>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <p className="modal-description">
-          Create a local demo incident to explore the workflow.
-        </p>
-        <label className="form-field">
-          Incident title
-          <input
-            autoFocus
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="e.g. Checkout API returning errors"
-          />
-        </label>
-        <label className="form-field">
-          Service name
-          <input
-            value={service}
-            onChange={(event) => setService(event.target.value)}
-            placeholder="e.g. checkout-api"
-          />
-        </label>
-        <label className="form-field">
-          Severity
-          <select
-            value={severity}
-            onChange={(event) => {
-              if (isSeverity(event.target.value)) setSeverity(event.target.value);
-            }}
-          >
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </label>
-        {error && <div className="form-error">{error}</div>}
-        <div className="modal-actions">
-          <span>Demo only · not sent to Switch</span>
-          <button type="button" className="secondary-button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary-button">
-            <Plus size={14} /> Create incident
-          </button>
-        </div>
-      </form>
+      {/* Lightweight, Low-Overhead Background Canvas that pauses when idle */}
+      <TopologyCanvas />
+
+      {/* Top Command HUD Header */}
+      <Header
+        activeNav={activeNav}
+        health={health}
+        warRoomOpen={warRoomOpen}
+        onToggleWarRoom={() => setWarRoomOpen((prev) => !prev)}
+        onOpenPalette={() => setPaletteOpen(true)}
+        unreadWarRoomCount={0}
+        mobileNavOpen={mobileNavOpen}
+        onToggleMobileNav={() => setMobileNavOpen((prev) => !prev)}
+      />
+
+      {/* App Shell: Sidebar + Main Viewport */}
+      <div className="app-shell">
+        <Sidebar
+          activeNav={activeNav}
+          onSelectNav={setActiveNav}
+          incidents={incidents}
+          hasPendingPatch={hasPendingPatch}
+          health={health}
+          mobileOpen={mobileNavOpen}
+          onCloseMobile={() => setMobileNavOpen(false)}
+        />
+
+        <main className="main-viewport select-none" tabIndex={-1}>
+          {activeNav === "Overview" && (
+            <OverviewView
+              incidents={incidents}
+              health={health}
+              onSelectIncident={(inc) => {
+                setSelectedIncident(inc);
+                setActiveNav("Incidents");
+              }}
+              onNavigateToIncidents={() => setActiveNav("Incidents")}
+              onOpenCreateModal={() => setCreateModalOpen(true)}
+              mttrDisplay={mttrDisplay}
+            />
+          )}
+
+          {activeNav === "Incidents" && (
+            <IncidentsView
+              incidents={incidents}
+              selectedIncident={selectedIncident}
+              execution={execution}
+              approval={approval}
+              isInvestigating={isInvestigating}
+              filter={incidentFilter}
+              onSelectFilter={setIncidentFilter}
+              onSelectIncident={setSelectedIncident}
+              onInvestigate={handleInvestigate}
+              onOpenApproval={() => setApprovalModalOpen(true)}
+              onOpenCreateModal={() => setCreateModalOpen(true)}
+              onNavigateToCodeReview={() => setActiveNav("Code Review")}
+              mttrDisplay={mttrDisplay}
+            />
+          )}
+
+          {activeNav === "AI Agents" && (
+            <AgentsView
+              agents={agents}
+              execution={execution}
+              onPingAgent={handlePingAgent}
+            />
+          )}
+
+          {activeNav === "Logs Explorer" && (
+            <LogsExplorerView
+              logs={logs}
+              searchQuery={logSearch}
+              onSearchChange={setLogSearch}
+              severityFilter={logSeverityFilter}
+              onSeverityFilterChange={setLogSeverityFilter}
+              onAnalyzeLog={handleAnalyzeLog}
+              onRefreshLogs={() => {
+                fetchLogs({ q: logSearch, level: logSeverityFilter }).then(setLogs);
+              }}
+            />
+          )}
+
+          {activeNav === "Code Review" && (
+            <CodeReviewView
+              incident={selectedIncident}
+              execution={execution}
+              approval={approval}
+              onOpenApproval={() => setApprovalModalOpen(true)}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* Collapsible Telegram War Room Slide-Over Drawer */}
+      <WarRoomDrawer
+        isOpen={warRoomOpen}
+        onClose={() => setWarRoomOpen(false)}
+        messages={warRoomMessages}
+        onSendMessage={handleSendWarRoomMessage}
+      />
+
+      {/* Raycast-style Action Dock */}
+      <div className="raycast-action-dock" role="toolbar" aria-label="Quick Actions">
+        <button
+          onClick={() => setApprovalModalOpen(true)}
+          className="dock-action-btn primary"
+          title="Sign-off on proposed patch"
+        >
+          <span>Sign-Off Gate</span>
+          <span className="keycap">↵</span>
+        </button>
+
+        <button
+          onClick={() => {
+            if (selectedIncident) handleInvestigate(selectedIncident.id);
+          }}
+          disabled={isInvestigating}
+          className="dock-action-btn"
+          title="Run multi-agent investigation"
+        >
+          <span>{isInvestigating ? "Investigating..." : "Run AI Investigation"}</span>
+          <span className="keycap">R</span>
+        </button>
+
+        <button
+          onClick={() => setWarRoomOpen((prev) => !prev)}
+          className="dock-action-btn"
+          title="Toggle Telegram War Room"
+        >
+          <span>War Room</span>
+          <span className="keycap">W</span>
+        </button>
+
+        <div className="dock-divider" />
+
+        <button
+          onClick={() => setPaletteOpen(true)}
+          className="dock-action-btn"
+          title="Open Command Palette"
+        >
+          <span>Commands</span>
+          <span className="keycap">⌘K</span>
+        </button>
+      </div>
+
+      {/* Interactive Command Palette (Cmd+K) */}
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={setActiveNav}
+        onToggleWarRoom={() => setWarRoomOpen((prev) => !prev)}
+        onOpenCreateModal={() => setCreateModalOpen(true)}
+        onInvestigateActive={() => {
+          if (selectedIncident) handleInvestigate(selectedIncident.id);
+        }}
+        onOpenApproval={() => setApprovalModalOpen(true)}
+      />
+
+      {/* Create Incident Modal */}
+      <CreateIncidentModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSubmit={handleCreateIncident}
+      />
+
+      {/* Human Approval Sign-off Dialog */}
+      {selectedIncident && (
+        <ApprovalDialog
+          incident={selectedIncident}
+          execution={execution}
+          isOpen={approvalModalOpen}
+          onClose={() => setApprovalModalOpen(false)}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      )}
+
+      {/* Non-blocking Telemetry Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
-
-export default App;

@@ -13,7 +13,7 @@
     "dev:api": "npm run dev --workspace backend",
     "dev:web": "npm run dev --workspace frontend",
     "build": "npm run build --workspace backend && npm run build --workspace frontend",
-    "test": "npm run test --workspace backend && npm run test --workspace sample-app",
+    "test": "npm run test --workspace backend && npm run test --workspace sample-app && npm run test --workspace frontend",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -28,6 +28,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "prettier": "^3.6.2",
+    "puppeteer-core": "^24.43.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.3"
   }

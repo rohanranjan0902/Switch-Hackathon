@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scene 10 — Final Closing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #080c14;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+      background-size: 60px 60px;
+      z-index: 1;
+    }
+    .glow-center {
+      position: absolute;
+      width: 1000px;
+      height: 600px;
+      background: radial-gradient(ellipse, rgba(14, 165, 233, 0.16) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%);
+      filter: blur(50px);
+      z-index: 2;
+    }
+    .content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      max-width: 1300px;
+    }
+    .quote-badge {
+      display: inline-block;
+      padding: 10px 24px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+      font-size: 20px;
+      font-weight: 500;
+      color: #7dd3fc;
+      margin-bottom: 28px;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.15);
+    }
+    .title {
+      font-size: 78px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      background: linear-gradient(135deg, #ffffff 40%, #38bdf8 75%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 20px;
+    }
+    .tagline {
+      font-size: 26px;
+      color: #94a3b8;
+      margin-bottom: 48px;
+      line-height: 1.5;
+    }
+    .cards-row {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 48px;
+    }
+    .feature-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px 22px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #cbd5e1;
+      backdrop-filter: blur(10px);
+    }
+    .feature-card span {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .credits {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      font-size: 19px;
+      color: #e2e8f0;
+    }
+    .team-name {
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="glow-center"></div>
+
+  <div class="content">
+    <div class="quote-badge">
+      “One incident. One coordinated team. Humans and AI working together.”
+    </div>
+
+    <h1 class="title">DevOps AI Command Center</h1>
+
+    <p class="tagline">
+      Autonomous Speed. Human Safety. Enterprise Incident Governance.
+    </p>
+
+    <div class="cards-row">
+      <div class="feature-card"><span>🤖</span>4-Agent Squad</div>
+      <div class="feature-card"><span>⚡</span>Switch Protocol</div>
+      <div class="feature-card"><span>💬</span>Telegram War Room</div>
+      <div class="feature-card"><span>🛠️</span>Unified Git Diff</div>
+      <div class="feature-card"><span>🧪</span>Sandbox Tests</div>
+      <div class="feature-card"><span>🛡️</span>Human Sign-Off Gate</div>
+    </div>
+
+    <div class="credits">
+      <span>Built by <span class="team-name">Team DAANAV</span></span>
+      <span style="opacity:0.4;">•</span>
+      <span>WeMakeDevs Flip the Switch Hackathon 2026</span>
+      <span style="opacity:0.4;">•</span>
+      <span style="color:#10b981; font-weight:600;">Track 01: Best Business Workflow</span>
+    </div>
+  </div>
+</body>
+</html>
+

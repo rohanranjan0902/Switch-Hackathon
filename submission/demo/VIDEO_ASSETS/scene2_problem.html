@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scene 2 — The Real-World Problem</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #07090e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      padding: 60px 80px;
+      position: relative;
+    }
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(239, 68, 68, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(239, 68, 68, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: 1;
+    }
+    .alert-glow {
+      position: absolute;
+      top: -150px;
+      right: 100px;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.12) 0%, transparent 70%);
+      filter: blur(60px);
+      z-index: 2;
+    }
+    .header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #f87171;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 12px #ef4444;
+      animation: blink 1.2s infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .title {
+      font-size: 44px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -1px;
+    }
+    .timestamp {
+      font-family: ui-monospace, monospace;
+      font-size: 16px;
+      color: #94a3b8;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* Main Layout */
+    .layout {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      flex: 1;
+    }
+    /* Left: Terminal Output */
+    .terminal-window {
+      background: #0f172a;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .terminal-header {
+      background: #1e293b;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+    .terminal-title {
+      margin-left: 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .terminal-body {
+      padding: 20px;
+      font-family: ui-monospace, monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      flex: 1;
+      overflow: hidden;
+    }
+    .log-crit { color: #f87171; font-weight: 700; }
+    .log-warn { color: #fbbf24; font-weight: 700; }
+    .log-stack { color: #94a3b8; padding-left: 20px; }
+    .log-highlight { color: #fca5a5; background: rgba(239, 68, 68, 0.2); padding: 2px 4px; border-radius: 4px; }
+    /* Right: Problem Callouts */
+    .problem-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: center;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-left: 4px solid #ef4444;
+      padding: 20px 24px;
+      border-radius: 10px;
+      backdrop-filter: blur(8px);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-desc {
+      font-size: 15px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+    .metric-spike {
+      margin-top: 10px;
+      display: flex;
+      gap: 20px;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+    }
+    .metric-spike span { color: #f87171; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="alert-glow"></div>
+
+  <div class="header">
+    <div>
+      <div class="tag">
+        <span class="pulse-dot"></span>
+        Production Alert Storm • 03:00 AM
+      </div>
+      <h2 class="title">Critical Payment Failure on checkout-api</h2>
+    </div>
+    <div class="timestamp">
+      ENV: PRODUCTION | REGION: us-east-1 | IMPACT: 12.5% TRAFFIC
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Left Terminal -->
+    <div class="terminal-window">
+      <div class="terminal-header">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <div class="terminal-title">checkout-api — stderr (k8s-pod-checkout-prod-77b8)</div>
+      </div>
+      <div class="terminal-body">
+        <p><span class="log-crit">[CRITICAL]</span> 2026-11-07 03:00:14.281 - POST /api/checkout HTTP 500 (182ms)</p>
+        <p class="log-crit"><span class="log-highlight">TypeError: Cannot read properties of undefined (reading 'id')</span></p>
+        <p class="log-stack">at processCheckout (<span style="color:#38bdf8;">src/checkout.ts:38:25</span>)</p>
+        <p class="log-stack">at async handlePaymentIntent (src/payment.ts:114:12)</p>
+        <p class="log-stack">at async Layer.handle [as handle_request] (express/router/layer.js:95)</p>
+        <br>
+        <p><span class="log-warn">[WARN]</span> 03:00:15.012 - Order #88492 dropped: missing cart reference in payload</p>
+        <p><span class="log-crit">[CRITICAL]</span> 03:00:16.890 - Rate of 500 responses exceeded threshold: 48.2 req/sec</p>
+        <p><span class="log-warn">[WARN]</span> 03:00:18.214 - Circuit breaker tripped for downstream payment gateway</p>
+        <br>
+        <p style="color:#64748b;">// PagerDuty Incident P-8942 triggered: 148 exceptions in last 60 seconds</p>
+      </div>
+    </div>
+
+    <!-- Right Cards -->
+    <div class="problem-cards">
+      <div class="card">
+        <div class="card-title">🚨 Alert Storm & Manual Triage Delay</div>
+        <div class="card-desc">Engineers wake up to disjointed notifications across Sentry, Datadog, and Slack. Identifying root cause takes an average of 45 painful minutes.</div>
+        <div class="metric-spike">Current MTTR: <span>45.0m</span> • Revenue Risk: <span>$18,400/min</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗂️ Fragmented Context & Tool Silos</div>
+        <div class="card-desc">Logs are in Elasticsearch, code is on GitHub, alerts are in PagerDuty, and coordination happens in chaotic chat rooms. Context is lost at every handoff.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚠️ Risky Unverified Code Fixes</div>
+        <div class="card-desc">Writing hotfixes under extreme 3 AM pressure leads to syntax defects and missed regressions that cascade into other microservices.</div>
+      </div>
+
+      <div class="card" style="border-left-color: #38bdf8;">
+        <div class="card-title" style="color: #38bdf8;">💡 The Solution: DevOps AI Command Center</div>
+        <div class="card-desc">An autonomous 4-agent fleet coordinated via Switch Agent Protocol with real-time Telegram War Room and mandatory human approval.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

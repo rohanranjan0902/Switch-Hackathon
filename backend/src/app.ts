@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errors.js";
 import { createIncidentRouter } from "./routes/incidents.js";
 import { IncidentService } from "./services/incidentService.js";
 import { IncidentOrchestrator } from "./agents/orchestrator/IncidentOrchestrator.js";
+import { telegramService } from "./integrations/telegram/telegramService.js";
 
 const logQuerySchema = z.object({
   q: z.string().optional(),
@@ -64,12 +65,75 @@ export function createApp(io: Server) {
   const app = express();
   const incidentService = new IncidentService();
   const orchestrator = new IncidentOrchestrator(incidentService, io, {
-    stepDelayMs: 400,
+    stepDelayMs: 1500,
     availableLogs: demoLogs,
   });
 
   // Wire orchestrator to the composite switch adapter
   switchAdapter.setOrchestrator(orchestrator);
+
+  // Start real-time Telegram integration
+  if (env.NODE_ENV !== "test") {
+    telegramService.startPolling();
+  }
+  telegramService.setActionHandler(async (action, incidentKey) => {
+    const all = incidentService.list();
+
+    if (action === "trigger") {
+      const target = incidentKey
+        ? (all.find((i) => i.key === incidentKey) ?? all[0])
+        : all[0];
+      if (!target) return "No incidents available to investigate";
+      void orchestrator.startInvestigation(target.id);
+      return `Launched investigation for ${target.key}`;
+    }
+
+    if (action === "status") {
+      return (
+        `📊 <b>Active Incidents (${all.length}):</b>\n\n` +
+        all
+          .map(
+            (i) =>
+              `• <code>${i.key}</code> [<b>${i.status}</b>] - ${i.title} (<code>${i.severity}</code>)`,
+          )
+          .join("\n")
+      );
+    }
+
+    const incident = all.find((i) => i.key === incidentKey);
+    if (!incident) return `Incident ${incidentKey} not found`;
+
+    const latest = orchestrator.getLatestExecutionForIncident(incident.id);
+    if (!latest || !latest.codeChange) return `No pending code change for ${incidentKey}`;
+
+    if (action === "approve") {
+      const approval = incidentService.recordApproval(
+        incident.id,
+        latest.codeChange.id,
+        true,
+        "Telegram Operator",
+        "Approved via Telegram button",
+      );
+      incidentService.updateStatus(incident.id, "RESOLVED");
+      const updated = incidentService.get(incident.id);
+      io.emit("incident:updated", updated);
+      io.emit("incident:approved", { approval, incident: updated });
+      return `Patch for ${incidentKey} approved and marked RESOLVED!`;
+    } else {
+      const approval = incidentService.recordApproval(
+        incident.id,
+        latest.codeChange.id,
+        false,
+        "Telegram Operator",
+        "Rejected via Telegram button",
+      );
+      incidentService.updateStatus(incident.id, "OPEN");
+      const updated = incidentService.get(incident.id);
+      io.emit("incident:updated", updated);
+      io.emit("incident:rejected", { approval, incident: updated });
+      return `Patch for ${incidentKey} rejected. Returned to OPEN.`;
+    }
+  });
 
   app.disable("x-powered-by");
   app.use(cors({ origin: env.FRONTEND_ORIGIN }));

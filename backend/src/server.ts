@@ -1,7 +1,11 @@
+import dns from "node:dns";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
+
+// Ensure IPv4 lookup precedence in WSL environments to prevent Node fetch ETIMEDOUT
+dns.setDefaultResultOrder("ipv4first");
 
 const io = new Server({
   cors: { origin: env.FRONTEND_ORIGIN },

@@ -44,4 +44,3 @@ export class IncidentManagerAgent {
 }
 
 export const incidentManagerAgent = new IncidentManagerAgent();
-

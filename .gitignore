@@ -12,10 +12,10 @@ coverage/
 !.vscode/settings.json
 *.log
 *.tsbuildinfo
+*.mp4
+*.wav
 backend/prisma/dev.db
 .archify/
 TESTING_GUIDE_PERSON1.md
 .switch/
 .claude/
-
-

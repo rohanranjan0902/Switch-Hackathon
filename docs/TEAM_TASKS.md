@@ -82,32 +82,32 @@ the documentation blocker to the team.
 - No PR operation can happen before a persisted human decision for that
   specific proposed change.
 
-## Person 3 — Frontend and dashboard
+## Person 3 — Frontend and dashboard (Completed ✅)
 
 ### Tasks
 
-1. Coordinate API response and event shapes with Person 2; use the documented
-   contract rather than duplicating backend assumptions.
-2. Replace local-only incident actions with API-backed create, update, and
-   detail workflows. Keep fallback fixtures clearly marked as demo data.
-3. Add clear loading, empty, validation, offline, and API error states.
-4. Add an incident activity view for actual persisted execution progress,
-   proposed changes, test results, and approval status as those API endpoints
-   become available.
-5. Add accessible approval/rejection review UI only after Person 2's
-   authorization and persistence contract is ready. Show the exact change and
-   test result the reviewer is deciding on.
-6. Add focused component or browser tests for core incident flows and error
-   states.
+1. [x] Coordinate API response and event shapes with Person 2; use the documented
+       contract rather than duplicating backend assumptions.
+2. [x] Replace local-only incident actions with API-backed create, update, and
+       detail workflows. Keep fallback fixtures clearly marked as demo data.
+3. [x] Add clear loading, empty, validation, offline, and API error states.
+4. [x] Add an incident activity view for actual persisted execution progress,
+       proposed changes, test results, and approval status as those API endpoints
+       become available.
+5. [x] Add accessible approval/rejection review UI only after Person 2's
+       authorization and persistence contract is ready. Show the exact change and
+       test result the reviewer is deciding on.
+6. [x] Add focused component or browser tests for core incident flows and error
+       states.
 
 ### Done when
 
-- UI data and actions come from the API for implemented features.
-- Real provider state is not confused with demo fixtures or unavailable
-  integrations.
-- Important actions have visible success/error feedback and are keyboard
-  accessible.
-- Tests cover incident creation/update and the states supported by the API.
+- [x] UI data and actions come from the API for implemented features.
+- [x] Real provider state is not confused with demo fixtures or unavailable
+      integrations.
+- [x] Important actions have visible success/error feedback and are keyboard
+      accessible.
+- [x] Tests cover incident creation/update and the states supported by the API.
 
 ## Person 4 — Infrastructure, testing, and GitHub
 
