@@ -68,7 +68,7 @@ export function SmartCatIcon({ className = "w-4 h-4" }: { className?: string }) 
 }
 
 // ============================================================================
-// TYPES
+// TYPES & CONSTANTS
 // ============================================================================
 type NavPage = "Overview" | "Incidents" | "AI Agents" | "Logs Explorer" | "Code Review";
 
@@ -78,7 +78,6 @@ interface TelegramMessage {
   senderRole: "mgr" | "log" | "fix" | "test" | "orch";
   time: string;
   text: string;
-  codeSnippet?: string;
 }
 
 const DEFAULT_DIFF_LINES = [
@@ -104,7 +103,7 @@ export default function App() {
   // Live Timer
   const [timerSeconds, setTimerSeconds] = useState(258.23);
 
-  // Agent Pipeline States: "COMPLETED" | "ACTIVE" | "IDLE"
+  // Agent Pipeline States
   const [pipelineState, setPipelineState] = useState<"step3_fixer" | "step4_testing" | "approved">("step3_fixer");
   const [testCount, setTestCount] = useState("18 / 18 PASS");
 
@@ -452,7 +451,7 @@ export default function App() {
   );
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#06080C] text-[#F1F5F9] flex flex-col font-['Inter']">
+    <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       
       {/* ATMOSPHERIC HARDWARE BACKGROUND CANVAS & GRID */}
       <div className="ambient-background">
@@ -462,42 +461,42 @@ export default function App() {
       {/* ====================================================================
           TOP COMMAND HUD HEADER
           ==================================================================== */}
-      <header className="relative z-20 h-[54px] bg-[#0A0D14]/80 backdrop-blur-md border-b border-white/[0.07] px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
+      <header className="cockpit-header">
+        <div className="brand-group">
           {/* SMART CAT EMBLEM BUTTON */}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="group flex items-center gap-2 px-3 py-1.5 bg-gradient-to-b from-[#181E2C] to-[#0E121B] border border-white/[0.12] hover:border-[#00F0FF] rounded-md text-[11px] font-extrabold tracking-[0.12em] text-[#00F0FF] shadow-sm hover:shadow-[0_0_16px_rgba(0,240,255,0.2)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+            className="brand-emblem"
             title="Team Daanav Mission Control (Click for Commands)"
           >
-            <SmartCatIcon className="w-4 h-4 text-[#00F0FF] group-hover:scale-115 transition-transform duration-200" />
+            <SmartCatIcon className="w-4 h-4 text-[#00F0FF]" />
             <span>TEAM DAANAV</span>
           </button>
 
-          <div className="flex items-center gap-2 text-[13px] font-medium text-[#64748B]">
+          <div className="system-breadcrumb">
             <span>DevOps Command Cockpit</span>
-            <span className="text-[#334155]">/</span>
-            <span className="text-[#F1F5F9] font-bold">INC-2847 (Active Outage)</span>
+            <span className="separator">/</span>
+            <span className="active-target">INC-2847 (Active Outage)</span>
           </div>
         </div>
 
         {/* STATUS DOCK (NO DOTS!) */}
-        <div className="flex items-center gap-3 font-mono text-[11px]">
+        <div className="status-dock">
           <div
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[#10B981] font-semibold tracking-wide hover:bg-emerald-500/20 hover:border-emerald-500 hover:shadow-[0_0_14px_rgba(16,185,129,0.25)] transition-all cursor-pointer"
+            className="status-pill"
             title="Switch Workspace Agent Bridge Protocol Connected"
           >
-            <svg className="w-3.5 h-3.5 stroke-current fill-none stroke-[2.2]" viewBox="0 0 24 24">
+            <svg style={{ width: 13, height: 13, stroke: "currentColor", fill: "none", strokeWidth: 2.2 }} viewBox="0 0 24 24">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
             <span>SWITCH WS://62912</span>
           </div>
 
           <div
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] font-semibold tracking-wide hover:bg-[#00F0FF]/20 hover:border-[#00F0FF] hover:shadow-[0_0_14px_rgba(0,240,255,0.25)] transition-all cursor-pointer"
+            className="status-pill telegram"
             title="Telegram 5-Bot Multi-Agent War Room Synced"
           >
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+            <svg style={{ width: 13, height: 13, fill: "currentColor" }} viewBox="0 0 24 24">
               <path d="M21.5 2L2 9.5l7.5 3 2.5 7.5 3-4.5 4 4.5z" />
             </svg>
             <span>SUPERGROUP: -1004337160724</span>
@@ -505,32 +504,28 @@ export default function App() {
 
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-[#131722] border border-white/[0.12] hover:border-[#00F0FF] hover:bg-[#1A2030] text-[#94A3B8] hover:text-white rounded-md text-[11px] font-semibold transition-all cursor-pointer"
+            className="cmd-k-trigger"
           >
             <span>Commands</span>
             <span className="keycap">⌘K</span>
           </button>
 
-          <div className="flex items-center gap-2 pl-2 pr-3 py-1 bg-[#11151F] border border-white/[0.12] rounded-full text-[12px] font-semibold">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#00F0FF] to-blue-500 text-[#060709] flex items-center justify-center text-[10px] font-extrabold">
-              TD
-            </div>
+          <div className="operator-chip">
+            <div className="operator-avatar">TD</div>
             <span>Team Daanav</span>
           </div>
         </div>
       </header>
 
       {/* ====================================================================
-          THREE-COLUMN COCKPIT GRID
+          THREE-COLUMN COCKPIT GRID (FIXED NON-OVERFLOWING GEOMETRY)
           ==================================================================== */}
-      <div className="relative z-10 grid grid-cols-[240px_1fr_390px] flex-1 h-[calc(100vh-54px-52px)] overflow-hidden">
+      <div className="cockpit-grid">
         
         {/* LEFT NAVIGATION DOCK */}
-        <aside className="bg-[#0A0D14]/70 backdrop-blur-md border-r border-white/[0.07] p-4 flex flex-col justify-between">
+        <aside className="cockpit-aside">
           <div>
-            <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-[#64748B] px-3 py-2 mb-1">
-              Mission Control
-            </div>
+            <div className="nav-group-label">Mission Control</div>
 
             {(
               [
@@ -544,119 +539,94 @@ export default function App() {
               <button
                 key={item.name}
                 onClick={() => setActiveNav(item.name)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all mb-1 cursor-pointer border ${
-                  activeNav === item.name
-                    ? "bg-[#141924] border-[#263247] text-[#00F0FF] font-semibold shadow-sm"
-                    : "text-[#94A3B8] hover:text-white hover:bg-[#0F131C] border-transparent"
-                }`}
+                className={`nav-btn ${activeNav === item.name ? "active" : ""}`}
               >
-                <div className="flex items-center gap-2.5">
-                  <item.icon className="w-4 h-4" />
+                <div className="nav-btn-inner">
+                  <item.icon style={{ width: 15, height: 15 }} />
                   <span>{item.name}</span>
                 </div>
-                {item.count && (
-                  <span className="font-mono text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-rose-500/15 border border-rose-500/35 text-[#F43F5E]">
-                    {item.count}
-                  </span>
-                )}
+                {item.count && <span className="counter-tag">{item.count}</span>}
               </button>
             ))}
           </div>
 
-          <div className="bg-[#080A0F]/80 border border-white/[0.07] rounded-lg p-3 font-mono text-[10.5px] flex flex-col gap-1.5">
-            <div className="text-[#00F0FF] font-bold tracking-wider text-[10px]">
-              SWITCH HACKATHON 2026
-            </div>
-            <div className="flex justify-between text-[#64748B]">
+          <div className="aside-footer-card">
+            <div className="label">SWITCH HACKATHON 2026</div>
+            <div className="metric">
               <span>Runtime:</span>
-              <span className="text-[#F1F5F9]">WSL2 + Node 22</span>
+              <span style={{ color: "var(--text-high)" }}>WSL2 + Node 22</span>
             </div>
-            <div className="flex justify-between text-[#64748B]">
+            <div className="metric">
               <span>Health:</span>
-              <span className="text-[#10B981] font-semibold">{health?.status?.toUpperCase() ?? "200 OK"}</span>
+              <span style={{ color: "var(--signal-emerald)", fontWeight: 700 }}>
+                {health?.status?.toUpperCase() ?? "200 OK"}
+              </span>
             </div>
-            <div className="flex justify-between text-[#64748B]">
+            <div className="metric">
               <span>Cluster:</span>
-              <span className="text-[#00F0FF] font-semibold">
-                {health?.integrations.switch.configured ? "SWITCH CONNECTED" : "5 BOTS READY"}
+              <span style={{ color: "var(--signal-cyan)", fontWeight: 700 }}>
+                {health?.integrations.switch.configured ? "SWITCH ONLINE" : "5 BOTS READY"}
               </span>
             </div>
           </div>
         </aside>
 
         {/* CENTER STAGE: WORKSPACE & COMMAND */}
-        <main className="p-6 overflow-y-auto flex flex-col gap-5">
+        <main className="cockpit-main">
           
           {/* INCIDENT HERO HUD (SPOTLIGHT CARD) */}
           <div
             onMouseMove={handleCardMouseMove}
-            className="spotlight-card incident-hero-hud p-6 bg-gradient-to-b from-[#111520] to-[#0B0E16] border border-white/[0.12] rounded-xl relative shadow-2xl"
+            className="spotlight-card incident-hero-hud"
           >
-            {/* Ambient Crimson Edge */}
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#F43F5E] to-[#E11D48] shadow-[0_0_16px_#F43F5E]" />
-
-            <div className="flex items-center justify-between mb-3.5 relative z-10">
-              <div className="flex items-center gap-3">
+            <div className="hud-meta-row">
+              <div className="badge-cluster">
                 {/* P0 BADGE (NO DOT!) */}
-                <div className="inline-flex items-center gap-1.5 bg-rose-500/15 border border-rose-500/40 text-[#F43F5E] font-mono text-[11px] font-extrabold px-2.5 py-1 rounded">
-                  <AlertTriangle className="w-3.5 h-3.5 fill-current" />
+                <div className="badge-p0">
+                  <AlertTriangle style={{ width: 12, height: 12, fill: "currentColor" }} />
                   <span>P0 CRITICAL OUTAGE</span>
                 </div>
-                <span className="font-mono text-[14px] font-extrabold text-white">INC-2847</span>
-                <span className="font-mono text-[11px] text-[#64748B]">
-                  Blast Radius: <span className="text-rose-300 font-semibold">12.4% Checkout Traffic</span>
+                <span className="incident-ticket-id">INC-2847</span>
+                <span className="blast-radius-tag">
+                  Blast Radius: <span style={{ color: "#FCA5A5", fontWeight: 700 }}>12.4% Checkout Traffic</span>
                 </span>
               </div>
 
               {/* TABULAR TELEMETRY TICKERS */}
-              <div className="flex items-center gap-7">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-0.5">
-                    MTTR Elapsed
-                  </span>
-                  <span className="font-mono text-[17px] font-bold text-white tabular-nums tracking-tight">
-                    {formattedTimer}
-                  </span>
+              <div className="telemetry-ticker-group">
+                <div className="telemetry-item">
+                  <span className="telemetry-label">MTTR Elapsed</span>
+                  <span className="telemetry-value">{formattedTimer}</span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-0.5">
-                    Target SLA
-                  </span>
-                  <span className="font-mono text-[17px] font-bold text-[#10B981] drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                    &lt; 05:00.00
-                  </span>
+                <div className="telemetry-item">
+                  <span className="telemetry-label">Target SLA</span>
+                  <span className="telemetry-value accent-emerald">&lt; 05:00.00</span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-0.5">
-                    Test Pass Ratio
-                  </span>
-                  <span className="font-mono text-[17px] font-bold text-[#00F0FF] drop-shadow-[0_0_10px_rgba(0,240,255,0.3)]">
-                    {testCount}
-                  </span>
+                <div className="telemetry-item">
+                  <span className="telemetry-label">Test Pass Ratio</span>
+                  <span className="telemetry-value accent-cyan">{testCount}</span>
                 </div>
               </div>
             </div>
 
-            <h1 className="text-[21px] font-extrabold tracking-tight text-white mb-2 leading-tight relative z-10">
+            <h1 className="hud-headline">
               Memory Leak in CheckoutWorker: Unclosed Redis Connection Pool
             </h1>
 
-            <div className="flex items-center gap-3 text-[13.5px] text-[#94A3B8] relative z-10">
+            <div className="hud-subline">
               <span>Target Component:</span>
-              <span className="font-mono text-[12px] bg-[#080A0F] border border-white/[0.07] rounded px-2 py-0.5 text-[#00F0FF]">
-                services/checkout/worker.py:140
-              </span>
+              <span className="code-chip">services/checkout/worker.py:140</span>
               <span>•</span>
               <span>Orchestrator:</span>
-              <span className="text-white font-bold">Switch 5-Bot Multi-Agent Pipeline</span>
+              <span style={{ color: "var(--text-pure)", fontWeight: 700 }}>Switch 5-Bot Multi-Agent Pipeline</span>
             </div>
           </div>
 
           {/* KINETIC 4-AGENT STEPPER PIPELINE */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[11px] font-extrabold tracking-[0.1em] uppercase text-[#64748B]">
+          <div className="pipeline-wrapper">
+            <div className="section-eyebrow">
               <span>Sequential Multi-Agent Pipeline (Dynamic Handoff)</span>
-              <span className="text-[#00F0FF] font-mono">
+              <span style={{ color: "var(--signal-cyan)", fontFamily: "var(--font-mono)" }}>
                 {pipelineState === "approved"
                   ? "INCIDENT RESOLVED & DEPLOYED"
                   : pipelineState === "step4_testing"
@@ -665,28 +635,26 @@ export default function App() {
               </span>
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="pipeline-grid">
               
               {/* Agent 1 */}
               <div
                 onMouseMove={handleCardMouseMove}
-                className="spotlight-card agent-card p-4 rounded-xl flex flex-col gap-3 cursor-pointer bg-gradient-to-b from-[#0F1716] to-[#0B1211] border border-emerald-500/30"
+                className="spotlight-card agent-card state-completed"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#12241F] border border-[#1F3F35] flex items-center justify-center text-[#10B981]">
-                      <Check className="w-4 h-4 stroke-[2.5]" />
+                <div className="card-head">
+                  <div className="agent-profile">
+                    <div className="icon-cube">
+                      <Check style={{ width: 14, height: 14, strokeWidth: 2.5 }} />
                     </div>
-                    <span className="text-[13.5px] font-bold text-white">Incident Mgr</span>
+                    <span className="agent-title">Incident Mgr</span>
                   </div>
-                  <span className="font-mono text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[#10B981]">
-                    Triage OK
-                  </span>
+                  <span className="state-badge">Triage OK</span>
                 </div>
-                <p className="text-[12px] text-[#94A3B8] leading-relaxed min-h-[36px]">
+                <p className="card-detail">
                   Correlated 482 Sentry alerts & declared P0 incident war room.
                 </p>
-                <div className="border-t border-white/[0.07] pt-2.5 flex items-center justify-between font-mono text-[10px] text-[#64748B]">
+                <div className="card-foot">
                   <span>@devops_incident_bot</span>
                   <span>12:34:02</span>
                 </div>
@@ -695,23 +663,21 @@ export default function App() {
               {/* Agent 2 */}
               <div
                 onMouseMove={handleCardMouseMove}
-                className="spotlight-card agent-card p-4 rounded-xl flex flex-col gap-3 cursor-pointer bg-gradient-to-b from-[#0F1716] to-[#0B1211] border border-emerald-500/30"
+                className="spotlight-card agent-card state-completed"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#12241F] border border-[#1F3F35] flex items-center justify-center text-[#10B981]">
-                      <Check className="w-4 h-4 stroke-[2.5]" />
+                <div className="card-head">
+                  <div className="agent-profile">
+                    <div className="icon-cube">
+                      <Check style={{ width: 14, height: 14, strokeWidth: 2.5 }} />
                     </div>
-                    <span className="text-[13.5px] font-bold text-white">Log Analyzer</span>
+                    <span className="agent-title">Log Analyzer</span>
                   </div>
-                  <span className="font-mono text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[#10B981]">
-                    Root Found
-                  </span>
+                  <span className="state-badge">Root Found</span>
                 </div>
-                <p className="text-[12px] text-[#94A3B8] leading-relaxed min-h-[36px]">
+                <p className="card-detail">
                   Located leaked Redis pool handles in worker.py loop at L140.
                 </p>
-                <div className="border-t border-white/[0.07] pt-2.5 flex items-center justify-between font-mono text-[10px] text-[#64748B]">
+                <div className="card-foot">
                   <span>@devops_log_analyzer_bot</span>
                   <span>12:34:28</span>
                 </div>
@@ -720,40 +686,26 @@ export default function App() {
               {/* Agent 3 */}
               <div
                 onMouseMove={handleCardMouseMove}
-                className={`spotlight-card agent-card p-4 rounded-xl flex flex-col gap-3 cursor-pointer transition-all ${
-                  pipelineState === "step3_fixer"
-                    ? "state-active bg-gradient-to-b from-[#131A28] to-[#0E1420] border-[#00F0FF]/45 shadow-[0_0_24px_rgba(0,240,255,0.18)]"
-                    : "bg-gradient-to-b from-[#0F1716] to-[#0B1211] border-emerald-500/30"
+                className={`spotlight-card agent-card ${
+                  pipelineState === "step3_fixer" ? "state-active" : "state-completed"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                        pipelineState === "step3_fixer"
-                          ? "bg-[#171E2D] border border-[#283348] text-[#00F0FF]"
-                          : "bg-[#12241F] border border-[#1F3F35] text-[#10B981]"
-                      }`}
-                    >
-                      {pipelineState === "step3_fixer" ? <Zap className="w-4 h-4" /> : <Check className="w-4 h-4 stroke-[2.5]" />}
+                <div className="card-head">
+                  <div className="agent-profile">
+                    <div className="icon-cube">
+                      {pipelineState === "step3_fixer" ? <Zap style={{ width: 14, height: 14 }} /> : <Check style={{ width: 14, height: 14, strokeWidth: 2.5 }} />}
                     </div>
-                    <span className="text-[13.5px] font-bold text-white">Code Fixer</span>
+                    <span className="agent-title">Code Fixer</span>
                   </div>
-                  <span
-                    className={`font-mono text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded ${
-                      pipelineState === "step3_fixer"
-                        ? "bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF]"
-                        : "bg-emerald-500/10 border border-emerald-500/30 text-[#10B981]"
-                    }`}
-                  >
+                  <span className="state-badge">
                     {pipelineState === "step3_fixer" ? "Active Patch" : "Patch Ready"}
                   </span>
                 </div>
-                <p className="text-[12px] text-[#94A3B8] leading-relaxed min-h-[36px]">
+                <p className="card-detail">
                   Generated async context manager patch with atomic socket release.
                 </p>
-                <div className="border-t border-white/[0.07] pt-2.5 flex items-center justify-between font-mono text-[10px] text-[#64748B]">
-                  <span className={pipelineState === "step3_fixer" ? "text-[#00F0FF]" : ""}>
+                <div className="card-foot">
+                  <span style={pipelineState === "step3_fixer" ? { color: "var(--signal-cyan)" } : {}}>
                     @devops_code_fixer_bot
                   </span>
                   <span>{pipelineState === "step3_fixer" ? "IN FLIGHT" : "12:35:10"}</span>
@@ -763,38 +715,22 @@ export default function App() {
               {/* Agent 4 */}
               <div
                 onMouseMove={handleCardMouseMove}
-                className={`spotlight-card agent-card p-4 rounded-xl flex flex-col gap-3 cursor-pointer transition-all ${
+                className={`spotlight-card agent-card ${
                   pipelineState === "step4_testing"
-                    ? "state-active bg-gradient-to-b from-[#131A28] to-[#0E1420] border-[#00F0FF]/45 shadow-[0_0_24px_rgba(0,240,255,0.18)]"
+                    ? "state-active"
                     : pipelineState === "approved"
-                    ? "bg-gradient-to-b from-[#0F1716] to-[#0B1211] border-emerald-500/30"
-                    : "opacity-70 bg-[#0F131C] border-white/[0.07]"
+                    ? "state-completed"
+                    : "state-idle"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                        pipelineState === "step4_testing"
-                          ? "bg-[#171E2D] border border-[#283348] text-[#00F0FF]"
-                          : pipelineState === "approved"
-                          ? "bg-[#12241F] border border-[#1F3F35] text-[#10B981]"
-                          : "bg-[#171E2D] text-[#64748B]"
-                      }`}
-                    >
-                      <Terminal className="w-4 h-4" />
+                <div className="card-head">
+                  <div className="agent-profile">
+                    <div className="icon-cube">
+                      <Terminal style={{ width: 14, height: 14 }} />
                     </div>
-                    <span className="text-[13.5px] font-bold text-white">Testing Agent</span>
+                    <span className="agent-title">Testing Agent</span>
                   </div>
-                  <span
-                    className={`font-mono text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded ${
-                      pipelineState === "step4_testing"
-                        ? "bg-[#00F0FF]/15 border border-[#00F0FF]/40 text-[#00F0FF]"
-                        : pipelineState === "approved"
-                        ? "bg-emerald-500/10 border border-emerald-500/30 text-[#10B981]"
-                        : "bg-white/[0.05] text-[#64748B]"
-                    }`}
-                  >
+                  <span className="state-badge">
                     {pipelineState === "step4_testing"
                       ? "Running Suite"
                       : pipelineState === "approved"
@@ -802,12 +738,12 @@ export default function App() {
                       : "Standing By"}
                   </span>
                 </div>
-                <p className="text-[12px] text-[#94A3B8] leading-relaxed min-h-[36px]">
+                <p className="card-detail">
                   {pipelineState === "step4_testing"
                     ? "Executing PyTest regression suite on isolated git sandbox worktree..."
                     : "Pre-loaded 18 regression test suites for payment checkout verification."}
                 </p>
-                <div className="border-t border-white/[0.07] pt-2.5 flex items-center justify-between font-mono text-[10px] text-[#64748B]">
+                <div className="card-foot">
                   <span>@devops_testing_agent_bot</span>
                   <span>{pipelineState === "step4_testing" ? "ACTIVE" : "QUEUED"}</span>
                 </div>
@@ -819,62 +755,46 @@ export default function App() {
           {/* UNIFIED MONACO-STYLE GIT DIFF CANVAS */}
           <div
             onMouseMove={handleCardMouseMove}
-            className="spotlight-card diff-container rounded-xl border border-white/[0.07] bg-[#0E1118] flex flex-col overflow-hidden shadow-2xl flex-1"
+            className="spotlight-card diff-container"
           >
-            <div className="bg-[#0B0E15] border-b border-white/[0.07] px-5 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3 font-mono text-[12px]">
-                <FileCode className="w-4 h-4 text-[#64748B]" />
-                <span className="text-white font-bold">services/checkout/worker.py</span>
-                <span className="text-[#10B981] font-extrabold bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                  +6
-                </span>
-                <span className="text-[#F43F5E] font-extrabold bg-rose-500/10 px-1.5 py-0.5 rounded">
-                  -3
-                </span>
+            <div className="diff-toolbar">
+              <div className="diff-title-cluster">
+                <FileCode style={{ width: 14, height: 14, color: "var(--text-dim)" }} />
+                <span className="diff-path">services/checkout/worker.py</span>
+                <span className="diff-stat-add">+6</span>
+                <span className="diff-stat-del">-3</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText("async with redis_pool.connection() as redis_conn:");
                     alert("Patch copied to clipboard!");
                   }}
-                  className="btn-mechanical text-[11px] py-1 px-3"
+                  className="btn-mechanical"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy style={{ width: 12, height: 12 }} />
                   <span>Copy Patch</span>
                 </button>
-                <button onClick={handleApprove} className="btn-mechanical primary-cta text-[11px] py-1 px-3">
-                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                <button onClick={handleApprove} className="btn-mechanical primary-cta">
+                  <Check style={{ width: 12, height: 12, strokeWidth: 2.5 }} />
                   <span>Human Sign-Off</span>
                 </button>
               </div>
             </div>
 
-            <div className="font-mono text-[12px] leading-[1.65] bg-[#080A0F] text-[#CBD5E1] overflow-x-auto p-0 flex-1">
+            <div className="diff-viewport">
               {DEFAULT_DIFF_LINES.map((line, idx) => (
                 <div
                   key={idx}
-                  className={`flex px-3.5 py-0.5 border-l-[3px] transition-colors ${
-                    line.type === "hunk"
-                      ? "bg-[#00F0FF]/5 text-[#00F0FF] border-transparent border-t border-b border-white/[0.07] py-1.5 font-semibold"
-                      : line.type === "del"
-                      ? "bg-rose-500/10 border-rose-500 text-rose-300"
-                      : line.type === "add"
-                      ? "bg-emerald-500/10 border-emerald-500 text-emerald-300"
-                      : "border-transparent hover:bg-white/[0.035]"
-                  }`}
+                  className={`diff-row type-${line.type}`}
                 >
-                  <span className="w-9 text-right pr-3.5 text-[#334155] select-none tabular-nums font-mono text-[11px]">
-                    {line.oldNum}
-                  </span>
-                  <span className="w-9 text-right pr-3.5 text-[#334155] select-none tabular-nums font-mono text-[11px]">
-                    {line.newNum}
-                  </span>
-                  <span className="w-4 select-none font-extrabold text-[12px]">
+                  <span className="gutter-num-old">{line.oldNum}</span>
+                  <span className="gutter-num-new">{line.newNum}</span>
+                  <span className="gutter-marker">
                     {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
                   </span>
-                  <span className="flex-1 whitespace-pre">{line.text}</span>
+                  <span className="diff-code-text">{line.text}</span>
                 </div>
               ))}
             </div>
@@ -883,68 +803,59 @@ export default function App() {
         </main>
 
         {/* RIGHT RAIL: TELEGRAM WAR ROOM STREAM */}
-        <div className="bg-[#0A0D14]/70 backdrop-blur-md border-l border-white/[0.07] flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-white/[0.07] flex items-center justify-between">
-            <div className="flex items-center gap-2.5 text-[11.5px] font-extrabold tracking-wider uppercase text-white">
-              <svg className="w-4 h-4 fill-[#00F0FF]" viewBox="0 0 24 24">
+        <div className="war-room-rail">
+          <div className="rail-topbar">
+            <div className="rail-heading">
+              <svg style={{ width: 14, height: 14, fill: "var(--signal-cyan)" }} viewBox="0 0 24 24">
                 <path d="M21.5 2L2 9.5l7.5 3 2.5 7.5 3-4.5 4 4.5z" />
               </svg>
               <span>Telegram War Room Mirror</span>
             </div>
-            <span className="font-mono text-[9.5px] font-extrabold text-[#10B981] bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded">
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "9.5px", fontWeight: 800, color: "var(--signal-emerald)" }}>
               SYNCED
             </span>
           </div>
 
           {/* CHAT MESSAGES STREAM (NO DOTS IN FRONT OF BOT HANDLES!) */}
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+          <div className="chat-scroll-canvas">
             {messages.map((m) => (
-              <div
-                key={m.id}
-                className="message-bubble bg-[#0F131C] border border-white/[0.07] hover:border-white/[0.15] rounded-lg p-3 flex flex-col gap-1.5 transition-all"
-              >
-                <div className="flex items-center justify-between text-[11px]">
+              <div key={m.id} className="message-bubble">
+                <div className="bubble-meta">
                   <span
-                    className={`font-mono font-bold ${
-                      m.senderRole === "mgr"
-                        ? "text-purple-400"
-                        : m.senderRole === "log"
-                        ? "text-amber-400"
-                        : m.senderRole === "fix"
-                        ? "text-[#00F0FF]"
-                        : m.senderRole === "test"
-                        ? "text-[#10B981]"
-                        : "text-blue-400"
-                    }`}
+                    className="sender-handle"
+                    style={{
+                      color:
+                        m.senderRole === "mgr"
+                          ? "#C084FC"
+                          : m.senderRole === "log"
+                          ? "#FBBF24"
+                          : m.senderRole === "fix"
+                          ? "var(--signal-cyan)"
+                          : m.senderRole === "test"
+                          ? "var(--signal-emerald)"
+                          : "#60A5FA",
+                    }}
                   >
                     {m.sender}
                   </span>
-                  <span className="font-mono text-[9.5px] text-[#64748B]">{m.time}</span>
+                  <span className="msg-timestamp">{m.time}</span>
                 </div>
-                <div className="text-[12.5px] text-[#F1F5F9] leading-relaxed">
-                  {m.text}
-                </div>
+                <div className="bubble-content">{m.text}</div>
               </div>
             ))}
           </div>
 
           {/* HUMAN GATE DECISION PANEL */}
-          <div className="p-4 bg-[#0B0E15] border-t border-white/[0.07] flex flex-col gap-2.5">
-            <div className="flex items-center gap-2 text-[11px] font-bold text-[#F59E0B]">
-              <AlertTriangle className="w-3.5 h-3.5 fill-current" />
+          <div className="gate-action-panel">
+            <div className="gate-prompt">
+              <AlertTriangle style={{ width: 13, height: 13, fill: "currentColor" }} />
               <span>Human Decision Gate: Team Daanav Sign-off</span>
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                onClick={handleReject}
-                className="btn-mechanical justify-center text-[11px] py-2"
-              >
+            <div className="gate-btn-row">
+              <button onClick={handleReject} className="btn-mechanical" style={{ justifyContent: "center" }}>
                 Reject Patch
               </button>
-              <button
-                onClick={handleApprove}
-                className="btn-mechanical primary-cta justify-center text-[11px] py-2"
-              >
+              <button onClick={handleApprove} className="btn-mechanical primary-cta" style={{ justifyContent: "center" }}>
                 Approve & Deploy
               </button>
             </div>
@@ -956,37 +867,25 @@ export default function App() {
       {/* ====================================================================
           FEATURE A: RAYCAST-STYLE FLOATING ACTION DOCK
           ==================================================================== */}
-      <div className="fixed bottom-3 left-1/2 -translate-x-1/2 h-11 bg-[#0E121A]/90 backdrop-blur-xl border border-white/[0.15] rounded-xl flex items-center px-2 gap-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.6)] z-50">
-        <button
-          onClick={handleApprove}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-b from-[#10B981] to-[#059669] border border-[#059669] text-[#040608] font-extrabold text-[12px] shadow-[0_2px_10px_rgba(16,185,129,0.3)] hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-        >
+      <div className="raycast-action-dock">
+        <button onClick={handleApprove} className="dock-action-btn primary">
           <span>Approve & Deploy</span>
-          <span className="keycap bg-black/35 text-white border-white/20">↵</span>
+          <span className="keycap">↵</span>
         </button>
 
-        <button
-          onClick={handleReanalyze}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/[0.08] hover:border-white/[0.1] text-[#F1F5F9] font-semibold text-[12px] active:scale-95 transition-all cursor-pointer border border-transparent"
-        >
+        <button onClick={handleReanalyze} className="dock-action-btn">
           <span>Re-Analyze</span>
           <span className="keycap">R</span>
         </button>
 
-        <button
-          onClick={handleRunTests}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/[0.08] hover:border-white/[0.1] text-[#F1F5F9] font-semibold text-[12px] active:scale-95 transition-all cursor-pointer border border-transparent"
-        >
+        <button onClick={handleRunTests} className="dock-action-btn">
           <span>Run Tests</span>
           <span className="keycap">T</span>
         </button>
 
-        <div className="w-px h-5 bg-white/[0.12] mx-1" />
+        <div className="dock-divider" />
 
-        <button
-          onClick={() => setPaletteOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/[0.08] hover:border-white/[0.1] text-[#F1F5F9] font-semibold text-[12px] active:scale-95 transition-all cursor-pointer border border-transparent"
-        >
+        <button onClick={() => setPaletteOpen(true)} className="dock-action-btn">
           <span>Actions</span>
           <span className="keycap">⌘K</span>
         </button>
@@ -1000,11 +899,11 @@ export default function App() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setPaletteOpen(false);
           }}
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center pt-28 p-4"
+          className="palette-overlay"
         >
-          <div className="w-[620px] bg-[#0E121B] border border-white/[0.18] rounded-xl shadow-[0_24px_60px_rgba(0,0,0,0.8),0_0_24px_rgba(0,240,255,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-white/[0.07] flex items-center gap-3">
-              <Search className="w-5 h-5 text-[#00F0FF]" />
+          <div className="palette-modal">
+            <div className="palette-input-box">
+              <Search style={{ width: 18, height: 18, color: "var(--signal-cyan)" }} />
               <input
                 type="text"
                 value={paletteQuery}
@@ -1014,14 +913,16 @@ export default function App() {
                 }}
                 placeholder="Type a command or search actions..."
                 autoFocus
-                className="flex-1 bg-transparent border-none outline-none text-[15px] font-medium text-white placeholder:text-[#64748B]"
+                className="palette-input"
               />
               <span className="keycap">ESC</span>
             </div>
 
-            <div className="max-h-[320px] overflow-y-auto p-2 flex flex-col gap-1">
+            <div className="palette-list">
               {filteredPalette.length === 0 ? (
-                <div className="p-4 text-center text-[#64748B] text-[13px]">No matching actions found.</div>
+                <div style={{ padding: 16, textAlign: "center", color: "var(--text-dim)", fontSize: 13 }}>
+                  No matching actions found.
+                </div>
               ) : (
                 filteredPalette.map((item, idx) => (
                   <div
@@ -1031,14 +932,10 @@ export default function App() {
                       item.action();
                     }}
                     onMouseEnter={() => setPaletteIndex(idx)}
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer text-[13px] font-medium transition-all ${
-                      paletteIndex === idx
-                        ? "bg-[#171E2D] text-[#00F0FF]"
-                        : "text-[#F1F5F9] hover:bg-white/[0.05]"
-                    }`}
+                    className={`palette-item ${paletteIndex === idx ? "selected" : ""}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <item.icon className="w-4 h-4 stroke-[2]" />
+                    <div className="palette-item-left">
+                      <item.icon style={{ width: 15, height: 15 }} />
                       <span>{item.label}</span>
                     </div>
                     <span className="keycap">{item.shortcut}</span>
@@ -1047,7 +944,7 @@ export default function App() {
               )}
             </div>
 
-            <div className="bg-[#090B10] border-t border-white/[0.07] px-4 py-2 flex items-center justify-between font-mono text-[10.5px] text-[#64748B]">
+            <div className="palette-footer">
               <span>Navigation: <kbd className="keycap">↑</kbd> <kbd className="keycap">↓</kbd></span>
               <span>Execute: <kbd className="keycap">↵</kbd></span>
               <span>Close: <kbd className="keycap">ESC</kbd></span>
