@@ -41,30 +41,30 @@ export function OverviewView({
   const switchMode = health?.integrations.switch.provider ?? "simulation";
 
   return (
-    <div className="flex flex-col gap-4 max-w-7xl mx-auto pb-8">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-8">
       {/* Stat HUD Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Active Outages */}
-        <div className="spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col justify-between min-h-[148px]">
-          <div className="flex items-center justify-between gap-1.5">
+        <div className="spotlight-card flex flex-col justify-between min-h-[154px] gap-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] truncate">
               Active Outages
             </span>
             <span
-              className={`w-2 h-2 rounded-full shrink-0 ${criticalCount > 0 ? "bg-[#F43F5E] animate-pulse" : "bg-[#10B981]"
+              className={`w-2.5 h-2.5 rounded-full shrink-0 ${criticalCount > 0 ? "bg-[#F43F5E] animate-pulse" : "bg-[#10B981]"
                 }`}
             />
           </div>
-          <div className="flex items-baseline justify-between gap-2 my-1">
-            <div className="flex items-baseline gap-1.5 whitespace-nowrap min-w-0">
+          <div className="flex items-baseline justify-between gap-2 my-0.5">
+            <div className="flex items-baseline gap-2 whitespace-nowrap min-w-0">
               <span
-                className={`text-2xl font-extrabold font-mono tracking-tight leading-none ${criticalCount > 0 ? "text-[#F43F5E]" : "text-[#10B981]"
+                className={`text-2xl font-extrabold font-mono tracking-tight leading-none tabular-nums ${criticalCount > 0 ? "text-[#F43F5E]" : "text-[#10B981]"
                   }`}
               >
                 {criticalCount > 0 ? criticalCount : activeIncidents.length}
               </span>
               <span
-                className={`text-sm font-bold uppercase tracking-wider ${criticalCount > 0 ? "text-[#F43F5E]" : "text-[#10B981]"
+                className={`text-xs font-bold uppercase tracking-wider ${criticalCount > 0 ? "text-[#F43F5E]" : "text-[#10B981]"
                   }`}
               >
                 {criticalCount > 0 ? "Critical" : "Active"}
@@ -84,17 +84,17 @@ export function OverviewView({
         </div>
 
         {/* Mean Time To Resolve */}
-        <div className="spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col justify-between min-h-[148px]">
-          <div className="flex items-center justify-between gap-1.5">
+        <div className="spotlight-card flex flex-col justify-between min-h-[154px] gap-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] truncate">
               Active MTTR Elapsed
             </span>
-            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 whitespace-nowrap shrink-0">
+            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/30 whitespace-nowrap shrink-0">
               SLA &lt; 05:00
             </span>
           </div>
-          <div className="flex items-baseline gap-2 my-1">
-            <span className="text-2xl font-extrabold text-[#00F0FF] font-mono tracking-tight leading-none whitespace-nowrap">
+          <div className="flex items-baseline gap-2 my-0.5">
+            <span className="text-2xl font-extrabold text-[#00F0FF] font-mono tracking-tight leading-none tabular-nums whitespace-nowrap">
               {mttrDisplay}
             </span>
           </div>
@@ -104,18 +104,18 @@ export function OverviewView({
         </div>
 
         {/* AI Agent Squad */}
-        <div className="spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col justify-between min-h-[148px]">
-          <div className="flex items-center justify-between gap-1.5">
+        <div className="spotlight-card flex flex-col justify-between min-h-[154px] gap-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] truncate">
               AI Agent Squad
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 whitespace-nowrap shrink-0">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/30 whitespace-nowrap shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
               SYNCED
             </span>
           </div>
-          <div className="flex items-baseline gap-2 my-1">
-            <span className="text-2xl font-extrabold text-[#10B981] font-mono tracking-tight leading-none whitespace-nowrap">
+          <div className="flex items-baseline gap-2 my-0.5">
+            <span className="text-2xl font-extrabold text-[#10B981] font-mono tracking-tight leading-none tabular-nums whitespace-nowrap">
               4 / 4 Online
             </span>
           </div>
@@ -125,17 +125,17 @@ export function OverviewView({
         </div>
 
         {/* Automated Test Pass */}
-        <div className="spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col justify-between min-h-[148px]">
-          <div className="flex items-center justify-between gap-1.5">
+        <div className="spotlight-card flex flex-col justify-between min-h-[154px] gap-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] truncate">
               Automated Tests
             </span>
-            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 whitespace-nowrap shrink-0">
+            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/30 whitespace-nowrap shrink-0">
               100% PASS
             </span>
           </div>
-          <div className="flex items-baseline gap-2 my-1">
-            <span className="text-2xl font-extrabold text-white font-mono tracking-tight leading-none whitespace-nowrap">
+          <div className="flex items-baseline gap-2 my-0.5">
+            <span className="text-2xl font-extrabold text-white font-mono tracking-tight leading-none tabular-nums whitespace-nowrap">
               2 / 2
             </span>
           </div>
@@ -146,12 +146,12 @@ export function OverviewView({
       </div>
 
       {/* Chart & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Velocity Chart */}
-        <div className="lg:col-span-7 xl:col-span-7 spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col justify-between gap-4">
+        <div className="lg:col-span-7 xl:col-span-7 spotlight-card flex flex-col justify-between gap-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-[#00F0FF]">
                   TELEMETRY METRICS
                 </span>
@@ -164,7 +164,7 @@ export function OverviewView({
               <h3 className="text-sm font-bold text-white tracking-tight">
                 Incident Resolution Velocity
               </h3>
-              <p className="text-xs text-[#64748B] mt-0.5">
+              <p className="text-xs text-[#64748B] mt-1">
                 Real-time correlation of incoming alerts vs autonomous patch sign-offs
               </p>
             </div>
@@ -236,19 +236,19 @@ export function OverviewView({
         </div>
 
         {/* Quick Fleet Health */}
-        <div className="lg:col-span-5 xl:col-span-5 spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col justify-between gap-4">
+        <div className="lg:col-span-5 xl:col-span-5 spotlight-card flex flex-col justify-between gap-5">
           <div>
-            <span className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-[#00F0FF] block mb-1">
+            <span className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-[#00F0FF] block mb-1.5">
               SYSTEM HEALTH
             </span>
             <h3 className="text-sm font-bold text-white tracking-tight">
               Production Microservices Grid
             </h3>
-            <p className="text-xs text-[#64748B] mt-0.5 mb-3">
+            <p className="text-xs text-[#64748B] mt-1 mb-4">
               Core services monitored by Switch Daemon
             </p>
 
-            <div className="flex flex-col gap-2 font-mono text-xs">
+            <div className="flex flex-col gap-2.5 font-mono text-xs">
               {[
                 {
                   name: "checkout-api",
@@ -279,7 +279,7 @@ export function OverviewView({
                   key={s.name}
                   className="flex items-center justify-between p-2.5 px-3 rounded-lg bg-[#080A0F] border border-white/[0.05] gap-2 min-w-0"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className="w-1.5 h-1.5 rounded-full shrink-0"
                       style={{ backgroundColor: s.color }}
@@ -290,7 +290,7 @@ export function OverviewView({
                   </div>
 
                   <div className="flex items-center gap-2.5 shrink-0 font-mono text-[11px]">
-                    <span className="text-[#64748B]">{s.latency}</span>
+                    <span className="text-[#64748B] tabular-nums">{s.latency}</span>
                     <span
                       style={{ color: s.color }}
                       className="font-bold tracking-wider uppercase text-[10.5px]"
@@ -305,7 +305,7 @@ export function OverviewView({
 
           <button
             onClick={onNavigateToIncidents}
-            className="btn-mechanical primary-cta justify-center mt-2 w-full flex items-center gap-2"
+            className="btn-mechanical primary-cta justify-center w-full flex items-center gap-2"
           >
             <span>Open Active Incident Cockpit</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -314,7 +314,7 @@ export function OverviewView({
       </div>
 
       {/* Incidents Quick Table */}
-      <div className="spotlight-card p-6 bg-[#0F131C] border border-white/[0.08] rounded-[14px] flex flex-col gap-4">
+      <div className="spotlight-card flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#00F0FF] block mb-1">
@@ -329,7 +329,7 @@ export function OverviewView({
           </div>
           <button
             onClick={onOpenCreateModal}
-            className="btn-mechanical text-xs py-2 px-3.5 flex items-center gap-2 shrink-0"
+            className="btn-mechanical text-xs flex items-center gap-2 shrink-0"
           >
             <Plus className="w-3.5 h-3.5 text-[#00F0FF]" />
             <span>Report Outage</span>
@@ -398,7 +398,7 @@ export function OverviewView({
                   <td className="py-3.5 px-4 text-right align-middle">
                     <button
                       onClick={() => onSelectIncident(inc)}
-                      className="btn-mechanical text-[11px] py-1.5 px-3"
+                      className="btn-mechanical text-[11px] h-7 px-3"
                     >
                       Investigate Cockpit
                     </button>

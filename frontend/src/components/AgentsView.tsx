@@ -127,7 +127,7 @@ export function AgentsView({ agents, execution, onPingAgent }: AgentsViewProps) 
 
                 <button
                   onClick={() => onPingAgent(bot.name, bot.id)}
-                  className="px-3 h-7 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-[#00F0FF] hover:bg-cyan-500/20 transition-all font-sans text-xs font-semibold cursor-pointer shrink-0"
+                  className="btn-mechanical text-xs h-[34px] px-3.5 text-[#00F0FF] bg-cyan-500/10 border-cyan-500/30 hover:bg-cyan-500/20 shrink-0"
                 >
                   Ping in War Room 💬
                 </button>

@@ -168,7 +168,7 @@ export function CodeReviewView({
 
           <button
             onClick={() => setShowRawOutput((prev) => !prev)}
-            className="btn-mechanical text-xs h-8 px-3 flex items-center gap-1.5 text-[#94A3B8]"
+            className="btn-mechanical text-xs h-[34px] px-3.5 flex items-center gap-1.5 text-[#94A3B8]"
           >
             <Terminal className="w-3.5 h-3.5" />
             <span>{showRawOutput ? "Hide TAP Output" : "View TAP Output"}</span>

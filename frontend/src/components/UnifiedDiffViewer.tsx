@@ -65,7 +65,7 @@ export function UnifiedDiffViewer({
 
         <button
           onClick={handleCopy}
-          className="btn-mechanical text-xs h-7 px-3 flex items-center gap-1.5 cursor-pointer rounded-lg"
+          className="btn-mechanical text-xs h-[32px] px-3 flex items-center gap-1.5 cursor-pointer rounded-lg"
           title="Copy raw unified diff patch"
         >
           {copied ? (

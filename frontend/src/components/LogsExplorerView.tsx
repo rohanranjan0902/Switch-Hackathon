@@ -53,7 +53,7 @@ export function LogsExplorerView({
               <button
                 key={lvl}
                 onClick={() => onSeverityFilterChange(lvl)}
-                className={`h-8 px-3 rounded-lg text-xs uppercase cursor-pointer transition-all font-semibold ${
+                className={`h-[34px] px-3.5 rounded-lg text-xs uppercase cursor-pointer transition-all font-semibold ${
                   severityFilter === lvl
                     ? "bg-[#141924] text-[#00F0FF] border border-[#263247] shadow-sm"
                     : "text-[#64748B] hover:text-white"

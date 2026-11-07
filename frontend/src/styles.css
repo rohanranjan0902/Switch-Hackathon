@@ -9,16 +9,37 @@
   --surface-card-hover: #141a26;
   --surface-sunken: #080a0f;
 
-  /* Standard Spacing & Radius Tokens */
+  /* Standard Spacing Tokens (4px, 8px, 12px, 16px, 20px, 24px, 32px, 40px) */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+
+  /* Standard Component Geometry */
   --card-padding: 24px;
   --card-radius: 14px;
-  --section-gap: 16px;
+  --radius-card: 14px;
+  --radius-btn: 8px;
+  --radius-badge: 6px;
+  --radius-input: 8px;
+  --radius-icon: 10px;
+
+  /* Standard Element Dimensions */
+  --height-input: 42px;
+  --height-btn: 38px;
+  --height-badge: 24px;
+  --size-icon-container: 38px;
+  --section-gap: 24px;
   --card-gap: 16px;
 
-  /* Precision Hairlines */
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-interactive: rgba(255, 255, 255, 0.12);
-  --border-active: rgba(0, 240, 255, 0.4);
+  /* Precision Hairlines & Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-interactive: rgba(255, 255, 255, 0.14);
+  --border-active: rgba(0, 240, 255, 0.45);
 
   /* Signal Color Accents */
   --signal-cyan: #00f0ff;
@@ -28,6 +49,7 @@
   --signal-crimson: #f43f5e;
   --signal-crimson-glow: rgba(244, 63, 94, 0.25);
   --signal-amber: #f59e0b;
+  --signal-amber-glow: rgba(245, 158, 11, 0.2);
   --signal-indigo: #6366f1;
 
   /* Typographic Contrast */
@@ -36,6 +58,11 @@
   --text-medium: #94a3b8;
   --text-dim: #64748b;
   --text-faint: #334155;
+
+  /* Motion & Transitions */
+  --transition-hover: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-btn: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-card: 200ms cubic-bezier(0.16, 1, 0.3, 1);
 
   --font-display: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -386,13 +413,23 @@ body {
   position: relative;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--card-radius, 14px);
+  border-radius: var(--radius-card, 14px);
+  padding: var(--card-padding, 24px);
   overflow: hidden;
   transition:
-    border-color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color var(--transition-normal),
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal);
   min-width: 0;
+  box-sizing: border-box;
+}
+
+.spotlight-card.p-0 {
+  padding: 0 !important;
+}
+
+.spotlight-card.p-12 {
+  padding: 48px !important;
 }
 
 .spotlight-card::before {
@@ -413,7 +450,9 @@ body {
 }
 
 .spotlight-card:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
 /* ============================================================
@@ -944,6 +983,9 @@ body {
 
 .message-bubble {
   animation: message-reveal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 14px 16px;
+  border-radius: 12px;
+  box-sizing: border-box;
 }
 
 .bubble-meta {
@@ -993,8 +1035,9 @@ body {
   font-family: var(--font-display);
   font-size: 12.5px;
   font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 8px;
+  height: var(--height-btn, 38px);
+  padding: 0 16px;
+  border-radius: var(--radius-btn, 8px);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1003,8 +1046,10 @@ body {
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--transition-btn);
   white-space: nowrap;
+  outline: none;
+  box-sizing: border-box;
 }
 
 .btn-mechanical:hover {
@@ -1016,6 +1061,20 @@ body {
 
 .btn-mechanical:active {
   transform: translateY(1px) scale(0.97);
+}
+
+.btn-mechanical:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--void-base),
+    0 0 0 4px var(--signal-cyan);
+}
+
+.btn-mechanical:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+  box-shadow: none;
 }
 
 .btn-mechanical.primary-cta {
@@ -1198,4 +1257,109 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-dim);
+}
+
+/* ============================================================
+   GLOBAL SCROLLBAR SYSTEM
+   ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.35);
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUT HARDENING
+   ============================================================ */
+@media (max-width: 1024px) {
+  .cockpit-header {
+    padding: 0 16px;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: 60px;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    background: rgba(10, 13, 20, 0.96);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+  }
+
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .main-viewport {
+    padding: 16px 16px 130px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .cockpit-header {
+    padding: 0 12px;
+  }
+
+  .brand-emblem {
+    padding: 4px 8px;
+    font-size: 10.5px;
+    gap: 6px;
+  }
+
+  .main-viewport {
+    padding: 12px 12px 120px 12px;
+  }
+
+  .raycast-action-dock {
+    width: calc(100vw - 24px);
+    justify-content: space-around;
+    padding: 0 6px;
+    gap: 4px;
+  }
+
+  .dock-action-btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+    gap: 6px;
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY: PREFERS REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ambient-background::before,
+  .spotlight-card::before,
+  .laser-radar-sweep {
+    display: none !important;
+  }
 }

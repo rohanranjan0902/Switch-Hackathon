@@ -194,7 +194,7 @@ export function IncidentsView({
               <button
                 onClick={() => onInvestigate(currentIncident.id)}
                 disabled={isInvestigating}
-                className="btn-mechanical text-xs h-7 px-3 text-[#00F0FF]"
+                className="btn-mechanical text-xs h-[34px] px-3.5 text-[#00F0FF]"
               >
                 {isInvestigating ? (
                   <>
@@ -244,7 +244,7 @@ export function IncidentsView({
       )}
 
       {/* ALL INCIDENT RECORDS SELECTOR (RESPONSIVE GRID) */}
-      <div className="flex flex-col gap-3 mt-2">
+      <div className="flex flex-col gap-3.5 mt-4">
         <h3 className="text-xs font-bold text-[#64748B] uppercase tracking-wider font-mono">
           All Incident Records ({filteredIncidents.length})
         </h3>
@@ -253,7 +253,7 @@ export function IncidentsView({
             <div
               key={inc.id}
               onClick={() => onSelectIncident(inc)}
-              className={`p-4 rounded-[14px] border cursor-pointer transition-all flex flex-col justify-between gap-3 shadow-sm ${
+              className={`p-5 rounded-[14px] border cursor-pointer transition-all flex flex-col justify-between gap-3.5 shadow-sm ${
                 currentIncident?.id === inc.id
                   ? "bg-[#141A26] border-[#00F0FF] text-white shadow-lg ring-1 ring-[#00F0FF]/30"
                   : "bg-[#0E1118] border-white/[0.08] text-[#94A3B8] hover:border-white/[0.2] hover:bg-[#111622] hover:-translate-y-0.5"
@@ -262,7 +262,7 @@ export function IncidentsView({
               <div className="flex items-center justify-between font-mono text-xs">
                 <span className="font-bold text-[#00F0FF]">{inc.id}</span>
                 <span
-                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                  className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-md ${
                     inc.severity === "critical"
                       ? "bg-rose-500/20 text-[#F43F5E] border border-rose-500/30"
                       : inc.severity === "high"
@@ -273,11 +273,11 @@ export function IncidentsView({
                   {inc.severity}
                 </span>
               </div>
-              <div className="text-xs font-medium text-white truncate font-sans">
+              <div className="text-xs font-semibold text-white truncate font-sans">
                 {inc.title}
               </div>
-              <div className="flex items-center justify-between text-xs text-[#64748B] pt-2 border-t border-white/[0.04] font-mono">
-                <span>{inc.service}</span>
+              <div className="flex items-center justify-between text-xs text-[#64748B] pt-2.5 border-t border-white/[0.05] font-mono">
+                <span className="code-chip text-[11px] py-0.5 px-2">{inc.service}</span>
                 <span className="capitalize">{inc.status}</span>
               </div>
             </div>
