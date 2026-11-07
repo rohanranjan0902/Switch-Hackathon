@@ -17,8 +17,8 @@ You can evaluate the DevOps AI Command Center immediately using either **Docker 
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-org/devops-ai-command-center.git
-cd devops-ai-command-center
+git clone https://github.com/rohanranjan0902/Switch-Hackathon.git
+cd Switch-Hackathon
 
 # 2. Copy environment template
 cp .env.example .env

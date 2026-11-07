@@ -79,7 +79,7 @@ The DevOps AI Command Center connects to the **Switch Agent Protocol** via the `
 ### PROJECT REPOSITORY & LINKS:
 
 - **GITHUB REPOSITORY**:
-  `[https://github.com/your-org/devops-ai-command-center - Placeholder for Verified Public Repository URL]`
+  `https://github.com/rohanranjan0902/Switch-Hackathon`
 
 - **DEMO VIDEO**:
   `[https://youtu.be/your-demo-video - Placeholder for Final Public Video URL]`

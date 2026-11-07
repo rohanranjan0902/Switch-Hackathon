@@ -1,0 +1,119 @@
+1
+00:00:00,500 --> 00:00:05,800
+Production incidents don't wait. Engineering teams shouldn't have to either.
+
+2
+00:00:06,000 --> 00:00:12,500
+Introducing the DevOps AI Command Center, built by Team DAANAV for the Flip the Switch Hackathon.
+
+3
+00:00:12,800 --> 00:00:19,200
+Uniting human engineers and autonomous AI agents to resolve production emergencies with safety.
+
+4
+00:00:20,500 --> 00:00:26,500
+A critical checkout service begins throwing HTTP 500 errors.
+
+5
+00:00:27,000 --> 00:00:35,500
+On-call engineers face alert storms, sifting through distributed logs to locate root causes.
+
+6
+00:00:36,000 --> 00:00:44,500
+Fragmented tools and manual handoffs delay remediation, risking cascading outages.
+
+7
+00:00:45,500 --> 00:00:54,500
+Built with React 19, Express 5, and Socket.IO: the Obsidian Command Center.
+
+8
+00:00:55,000 --> 00:01:07,000
+Live telemetry metrics: MTTR reduced to 42s, 100% test pass rate, and microservice status.
+
+9
+00:01:07,500 --> 00:01:19,500
+Incident INC-2847 flagged: critical payment failure on the checkout API.
+
+10
+00:01:20,500 --> 00:01:30,000
+The Switch Agent Protocol connects humans and agents in a shared operational room.
+
+11
+00:01:30,500 --> 00:01:42,000
+No single-prompt hallucinations: 4 specialized agents execute distinct engineering roles.
+
+12
+00:01:42,500 --> 00:01:54,500
+Incident Manager, Log Analyzer, Code Fixer, and Testing Agent coordinate via Switch.
+
+13
+00:01:55,500 --> 00:02:05,000
+Telegram War Room: Human operator triggers incident investigation for INC-2847.
+
+14
+00:02:05,500 --> 00:02:16,500
+Incident Manager and Log Analyzer identify blast radius and stack trace.
+
+15
+00:02:17,000 --> 00:02:30,000
+Code Fixer posts a synthesized unified git diff directly into chat.
+
+16
+00:02:30,500 --> 00:02:42,500
+Testing Agent verifies patch with 100% test pass and attaches approval buttons.
+
+17
+00:02:43,000 --> 00:02:49,500
+Real-time bi-directional synchronization between Telegram and Web Cockpit.
+
+18
+00:02:50,500 --> 00:03:01,500
+Detailed Code Review in the Command Center with Unified Diff Viewer.
+
+19
+00:03:02,000 --> 00:03:13,500
+Precision surgery: defensive optional chaining and fallback cart logic.
+
+20
+00:03:14,000 --> 00:03:24,500
+Preserves business logic without risky full-file rewrites.
+
+21
+00:03:25,500 --> 00:03:34,500
+Automated sandbox testing verifies the hotfix before human review.
+
+22
+00:03:35,000 --> 00:03:44,500
+100% test assertions pass with zero regressions in under 500ms.
+
+23
+00:03:45,000 --> 00:03:54,500
+28 automated tests across monorepo guarantee proof of correctness.
+
+24
+00:03:55,500 --> 00:04:05,000
+Human-in-the-Loop Gate: AI cannot merge without explicit human sign-off.
+
+25
+00:04:05,500 --> 00:04:14,500
+Operator approves patch in Telegram; cryptographic signature recorded.
+
+26
+00:04:15,000 --> 00:04:24,500
+Status transitions to RESOLVED; MTTR finalized at 42 seconds.
+
+27
+00:04:25,500 --> 00:04:36,500
+Robust architecture: React 19, Express 5, PostgreSQL Prisma, and Switch Agent Protocol.
+
+28
+00:04:37,000 --> 00:04:49,500
+Transforming chaotic 3 AM outages into deterministic, human-governed business workflows.
+
+29
+00:04:50,500 --> 00:04:57,500
+One incident. One coordinated team. Humans and AI working together.
+
+30
+00:04:58,000 --> 00:05:04,500
+DevOps AI Command Center. Built by Team DAANAV for Flip the Switch Hackathon 2026.

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scene 5 — Telegram War Room (Live Workflow)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #0e1621;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #f5f5f5;
+      display: flex;
+    }
+    /* Telegram Left Sidebar */
+    .tg-sidebar {
+      width: 420px;
+      height: 1080px;
+      background: #17212b;
+      border-right: 1px solid rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+    .tg-sidebar-header {
+      height: 64px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #17212b;
+      border-bottom: 1px solid rgba(0,0,0,0.2);
+    }
+    .tg-menu-btn {
+      width: 24px;
+      height: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .tg-menu-btn span {
+      display: block;
+      height: 2px;
+      background: #708499;
+      border-radius: 2px;
+    }
+    .tg-search-bar {
+      flex: 1;
+      height: 38px;
+      background: #242f3d;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 14px;
+      color: #708499;
+    }
+    .chat-item {
+      padding: 14px 18px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+    .chat-item.active {
+      background: #2b5278;
+    }
+    .chat-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .chat-info {
+      flex: 1;
+      overflow: hidden;
+    }
+    .chat-title-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .chat-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .chat-time {
+      font-size: 12px;
+      color: #7f91a4;
+    }
+    .chat-snippet {
+      font-size: 14px;
+      color: #8c9dae;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-item.active .chat-snippet { color: #d0e4f7; }
+    .chat-badge {
+      padding: 2px 8px;
+      background: #5288c1;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+    /* Telegram Main Chat Pane */
+    .tg-main {
+      flex: 1;
+      height: 1080px;
+      display: flex;
+      flex-direction: column;
+      background: #0e1621;
+      position: relative;
+    }
+    .tg-header {
+      height: 64px;
+      background: #17212b;
+      border-bottom: 1px solid rgba(0,0,0,0.3);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+    .tg-header-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .tg-header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .tg-header-subs {
+      font-size: 13px;
+      color: #7f91a4;
+    }
+    .tg-header-tools {
+      display: flex;
+      gap: 20px;
+      color: #708499;
+      font-size: 18px;
+    }
+    /* Chat Stream */
+    .tg-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #0e1621;
+    }
+    /* Message Bubbles */
+    .msg-group {
+      display: flex;
+      gap: 14px;
+      max-width: 85%;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .msg-group.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .msg-group.outgoing {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+      max-width: 75%;
+    }
+    .msg-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .msg-bubble {
+      background: #182533;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border-top-left-radius: 4px;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .msg-group.outgoing .msg-bubble {
+      background: #2b5278;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 4px;
+    }
+    .msg-author {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bot-tag {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .msg-text {
+      font-size: 15px;
+      line-height: 1.5;
+      color: #e4ecf2;
+    }
+    .msg-meta {
+      font-size: 11px;
+      color: #6c7883;
+      text-align: right;
+      margin-top: 4px;
+    }
+    .msg-group.outgoing .msg-meta { color: #8bb5de; }
+    /* Diff Box inside Telegram message */
+    .diff-block {
+      background: #090e15;
+      border: 1px solid rgba(0,0,0,0.5);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 8px;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+    .diff-add { color: #4ade80; background: rgba(74, 222, 128, 0.1); display: block; border-left: 3px solid #22c55e; padding-left: 6px; }
+    .diff-del { color: #f87171; background: rgba(248, 113, 113, 0.1); display: block; border-left: 3px solid #ef4444; padding-left: 6px; }
+    .diff-meta { color: #38bdf8; font-weight: 600; margin-bottom: 4px; display: block; }
+    /* Inline Action Buttons */
+    .tg-inline-keyboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .tg-btn {
+      background: #2b5278;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tg-btn.approve {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .tg-btn.approve.clicked {
+      transform: scale(0.96);
+      background: #047857;
+      box-shadow: 0 0 20px #10b981;
+    }
+    .tg-btn.reject {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    /* Bottom Input Bar */
+    .tg-footer {
+      height: 68px;
+      background: #17212b;
+      border-top: 1px solid rgba(0,0,0,0.3);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .tg-input {
+      flex: 1;
+      height: 42px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      color: #fff;
+    }
+    .tg-input::placeholder { color: #6c7883; }
+    .live-sync-banner {
+      position: absolute;
+      top: 76px;
+      right: 24px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 0.5px;
+      z-index: 20;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="tg-sidebar">
+    <div class="tg-sidebar-header">
+      <div class="tg-menu-btn"><span></span><span></span><span></span></div>
+      <div class="tg-search-bar">Search Telegram...</div>
+    </div>
+    <div class="chat-item active">
+      <div class="chat-avatar">⚡</div>
+      <div class="chat-info">
+        <div class="chat-title-row">
+          <span class="chat-name">DevOps Incident War Room</span>
+          <span class="chat-time">19:30</span>
+        </div>
+        <div class="chat-snippet">✅ Patch for INC-2847 was APPROVED!</div>
+      </div>
+      <span class="chat-badge">LIVE</span>
+    </div>
+    <div class="chat-item">
+      <div class="chat-avatar" style="background:#475569;">🚀</div>
+      <div class="chat-info">
+        <div class="chat-title-row">
+          <span class="chat-name">Deployments & CI/CD</span>
+          <span class="chat-time">18:42</span>
+        </div>
+        <div class="chat-snippet">Pipeline release-v2.8.2 succeeded</div>
+      </div>
+    </div>
+    <div class="chat-item">
+      <div class="chat-avatar" style="background:#334155;">📊</div>
+      <div class="chat-info">
+        <div class="chat-title-row">
+          <span class="chat-name">Datadog SRE Alerts</span>
+          <span class="chat-time">18:15</span>
+        </div>
+        <div class="chat-snippet">No active P0 anomalies</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Chat -->
+  <div class="tg-main">
+    <div class="tg-header">
+      <div class="tg-header-info">
+        <div>
+          <div class="tg-header-title">DevOps Incident War Room</div>
+          <div class="tg-header-subs">5 members • 4 autonomous AI bots • Switch Room active</div>
+        </div>
+      </div>
+      <div class="tg-header-tools">
+        <span>🔍</span><span>📞</span><span>⋮</span>
+      </div>
+    </div>
+
+    <div class="live-sync-banner">
+      <span class="live-dot"></span>
+      SWITCH AGENT PROTOCOL • LIVE SYNC
+    </div>
+
+    <div class="tg-messages" id="messagesContainer">
+      <!-- 1. Operator Request -->
+      <div class="msg-group outgoing" id="msg1">
+        <div class="msg-avatar" style="background:#0284c7;">👤</div>
+        <div class="msg-bubble">
+          <div class="msg-author" style="color:#7dd3fc;">@mukul (Operator, Team DAANAV)</div>
+          <div class="msg-text">
+            Checkout API is returning HTTP 500 errors. Investigate <code>INC-2847</code> immediately.
+          </div>
+          <div class="msg-meta">19:30:02 ✓✓</div>
+        </div>
+      </div>
+
+      <!-- 2. Incident Manager -->
+      <div class="msg-group" id="msg2">
+        <div class="msg-avatar" style="background:#7c3aed;">🤖</div>
+        <div class="msg-bubble">
+          <div class="msg-author" style="color:#c084fc;">
+            @IncidentManagerBot <span class="bot-tag">BOT</span>
+          </div>
+          <div class="msg-text">
+            🚨 <b>Incident Scope Established: <code>INC-2847</code></b><br>
+            • Service: <code>checkout-api</code> (Severity: <code>CRITICAL</code>)<br>
+            • Blast Radius: <b>12.5% of checkout traffic</b><br>
+            • Strategy: Delegating log mining & telemetry isolation to <code>@LogAnalyzerBot</code>.
+          </div>
+          <div class="msg-meta">19:30:04</div>
+        </div>
+      </div>
+
+      <!-- 3. Log Analyzer -->
+      <div class="msg-group" id="msg3">
+        <div class="msg-avatar" style="background:#d97706;">🔍</div>
+        <div class="msg-bubble">
+          <div class="msg-author" style="color:#fbbf24;">
+            @LogAnalyzerBot <span class="bot-tag">BOT</span>
+          </div>
+          <div class="msg-text">
+            🔍 <b>Culprit Log Entry Isolated:</b><br>
+            <code>TypeError: Cannot read properties of undefined (reading 'id')</code><br>
+            Location: <code style="color:#38bdf8;">src/checkout.ts:38</code> (Missing cart reference in order payload).<br>
+            👉 Handing off remediation to <code>@CodeFixerBot</code>.
+          </div>
+          <div class="msg-meta">19:30:08</div>
+        </div>
+      </div>
+
+      <!-- 4. Code Fixer -->
+      <div class="msg-group" id="msg4">
+        <div class="msg-avatar" style="background:#0891b2;">🛠️</div>
+        <div class="msg-bubble">
+          <div class="msg-author" style="color:#67e8f9;">
+            @CodeFixerBot <span class="bot-tag">BOT</span>
+          </div>
+          <div class="msg-text">
+            🛠️ <b>Hotfix Patch Synthesized:</b><br>
+            Added defensive optional chaining & fallback cart generator.
+            <div class="diff-block">
+              <span class="diff-meta">--- a/sample-app/src/checkout.ts</span>
+              <span class="diff-meta">+++ b/sample-app/src/checkout.ts</span>
+              <span class="diff-del">- const cartId = order.cart.id;</span>
+              <span class="diff-add">+ const cartId = order?.cart?.id ?? generateFallbackCartId();</span>
+            </div>
+            👉 <code>@TestingAgentBot</code>, execute regression test suite in isolated sandbox.
+          </div>
+          <div class="msg-meta">19:30:14</div>
+        </div>
+      </div>
+
+      <!-- 5. Testing Agent -->
+      <div class="msg-group" id="msg5">
+        <div class="msg-avatar" style="background:#059669;">🧪</div>
+        <div class="msg-bubble">
+          <div class="msg-author" style="color:#6ee7b7;">
+            @TestingAgentBot <span class="bot-tag">BOT</span>
+          </div>
+          <div class="msg-text">
+            🧪 <b>Regression Suite Execution Complete:</b><br>
+            Status: <b style="color:#4ade80;">PASSED ✅</b> (2/2 test assertions passed, duration: 447ms)<br>
+            Zero regressions detected. Patch verified safe for deployment.<br><br>
+            ⚠️ <b>Human-in-the-Loop Review Required:</b> Autonomous merging is restricted. Please sign off:
+          </div>
+          <div class="tg-inline-keyboard">
+            <div class="tg-btn approve" id="approveBtn">✅ Approve & Deploy</div>
+            <div class="tg-btn reject">❌ Reject Patch</div>
+          </div>
+          <div class="msg-meta">19:30:20</div>
+        </div>
+      </div>
+
+      <!-- 6. Resolution Event -->
+      <div class="msg-group" id="msg6">
+        <div class="msg-avatar" style="background:#10b981;">🛡️</div>
+        <div class="msg-bubble" style="background:#132d29; border: 1px solid rgba(16, 185, 129, 0.4);">
+          <div class="msg-author" style="color:#34d399;">
+            @DevOpsSystemBot <span class="bot-tag">SYSTEM</span>
+          </div>
+          <div class="msg-text">
+            ✅ <b>Patch for INC-2847 was APPROVED by @mukul via Telegram!</b><br>
+            • Cryptographic signature recorded to audit trail.<br>
+            • Hotfix deployed to staging & production canary.<br>
+            • Incident <code>INC-2847</code> status transitioned to <b>RESOLVED</b>.<br>
+            • Mean Time to Remediation (MTTR): <b>42 seconds</b>.
+          </div>
+          <div class="msg-meta">19:30:24</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Input Bar -->
+    <div class="tg-footer">
+      <input class="tg-input" type="text" placeholder="Write a message to the War Room or send /investigate..." value="">
+      <span style="color:#708499; font-size:20px; cursor:pointer;">📎</span>
+      <span style="color:#5288c1; font-size:20px; cursor:pointer;">➤</span>
+    </div>
+  </div>
+
+  <script>
+    // Animate messages over the 55s video scene sequence
+    const delays = [
+      { id: 'msg1', time: 500 },
+      { id: 'msg2', time: 3500 },
+      { id: 'msg3', time: 8000 },
+      { id: 'msg4', time: 14000 },
+      { id: 'msg5', time: 24000 },
+      { id: 'approveAction', time: 34000 },
+      { id: 'msg6', time: 37000 }
+    ];
+
+    delays.forEach(item => {
+      setTimeout(() => {
+        if (item.id === 'approveAction') {
+          const btn = document.getElementById('approveBtn');
+          if (btn) btn.classList.add('clicked');
+        } else {
+          const el = document.getElementById(item.id);
+          if (el) {
+            el.classList.add('visible');
+            el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
+        }
+      }, item.time);
+    });
+  </script>
+</body>
+</html>
+

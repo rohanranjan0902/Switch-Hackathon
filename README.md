@@ -209,8 +209,8 @@ devops-ai-command-center/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/devops-ai-command-center.git
-cd devops-ai-command-center
+git clone https://github.com/rohanranjan0902/Switch-Hackathon.git
+cd Switch-Hackathon
 
 # Install dependencies across all workspaces
 npm install
