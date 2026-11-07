@@ -1061,6 +1061,32 @@ h1 {
   font-size: 8.5px;
   white-space: nowrap;
 }
+.integration-status.connected {
+  border-color: #1e3f31;
+  color: #4dbd91;
+}
+.integration-status.connected i {
+  background: #4dbd91;
+  box-shadow: 0 0 6px #4dbd91;
+}
+.banner-success {
+  background: rgba(77, 189, 145, 0.08);
+  border-color: rgba(77, 189, 145, 0.25);
+}
+.banner-success div strong {
+  color: #4dbd91;
+}
+.banner-success svg {
+  color: #4dbd91;
+}
+.pill-live {
+  border-color: rgba(77, 189, 145, 0.3);
+  color: #4dbd91;
+}
+.pill-live span {
+  background: #4dbd91;
+  box-shadow: 0 0 6px #4dbd91;
+}
 .integration-status i {
   width: 5px;
   height: 5px;

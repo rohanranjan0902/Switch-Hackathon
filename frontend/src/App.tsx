@@ -38,6 +38,8 @@ import {
 import { agents, initialIncidents, logs } from "./data";
 import {
   fetchIncidents,
+  fetchHealth,
+  type ApiHealth,
   patchIncidentStatus,
   postIncident,
   toIncident,
@@ -111,10 +113,19 @@ function App() {
   const [toast, setToast] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [health, setHealth] = useState<ApiHealth | null>(null);
 
   useEffect(() => {
     let active = true;
     const socket = io();
+
+    fetchHealth()
+      .then((data) => {
+        if (active) setHealth(data);
+      })
+      .catch(() => {
+        // Leave null if unreachable
+      });
     const syncIncident = (record: Parameters<typeof toIncident>[0]) => {
       if (!active) return;
       const incident = toIncident(record);
@@ -393,8 +404,14 @@ function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="switch-status">
-            <span className="status-dot dot-amber" />
-            <span>Switch not connected</span>
+            <span
+              className={`status-dot ${health?.integrations.switch.configured ? "dot-green" : "dot-amber"}`}
+            />
+            <span>
+              {health?.integrations.switch.configured
+                ? "Switch connected"
+                : "Switch not connected"}
+            </span>
             <button aria-label="Switch setup help" onClick={() => setPage("AI Agents")}>
               <CircleHelp size={14} />
             </button>
@@ -461,6 +478,7 @@ function App() {
               onCreate={() => setShowCreate(true)}
               onStatus={changeStatus}
               onSelect={setSelectedIncident}
+              health={health}
             />
           )}
           {page === "Incidents" && (
@@ -475,7 +493,7 @@ function App() {
               onSelect={setSelectedIncident}
             />
           )}
-          {page === "AI Agents" && <AgentsPage />}
+          {page === "AI Agents" && <AgentsPage health={health} />}
           {page === "Logs Explorer" && <LogsPage />}
           {page === "Code Review" && (
             <CodeReviewPage
@@ -558,12 +576,14 @@ function Overview({
   onCreate,
   onStatus,
   onSelect,
+  health,
 }: {
   incidents: Incident[];
   onNavigate: (page: Page) => void;
   onCreate: () => void;
   onStatus: (id: string, status: IncidentStatus) => void;
   onSelect: (incident: Incident) => void;
+  health?: ApiHealth | null;
 }) {
   const active = incidents.filter((i) => i.status !== "resolved").length;
   const critical = incidents.filter(
@@ -718,7 +738,7 @@ function Overview({
             </ResponsiveContainer>
           </div>
         </section>
-        <AgentsPanel />
+        <AgentsPanel health={health} />
       </div>
       <section className="panel incident-panel">
         <div className="panel-heading">
@@ -788,7 +808,7 @@ function MetricCard({
   );
 }
 
-function AgentsPanel() {
+function AgentsPanel({ health }: { health?: ApiHealth | null }) {
   return (
     <section className="panel agents-panel">
       <div className="panel-heading">
@@ -818,7 +838,12 @@ function AgentsPanel() {
         ))}
       </div>
       <div className="agent-footnote">
-        <span className="status-dot dot-amber" /> Demo activity · Switch not connected
+        <span
+          className={`status-dot ${health?.integrations.switch.configured ? "dot-green" : "dot-amber"}`}
+        />{" "}
+        {health?.integrations.switch.configured
+          ? `Switch connected · Room: ${health.integrations.switch.activeRoom ?? "incident-war-room"}`
+          : "Demo activity · Switch not connected"}
       </div>
     </section>
   );
@@ -977,7 +1002,9 @@ function IncidentTable({
   );
 }
 
-function AgentsPage() {
+function AgentsPage({ health }: { health?: ApiHealth | null }) {
+  const isSwitchConfigured = Boolean(health?.integrations.switch.configured);
+
   return (
     <>
       <PageHeading
@@ -985,19 +1012,35 @@ function AgentsPage() {
         title="AI Agents"
         description="Specialized agents collaborate on incident investigation through Switch."
       />
-      <div className="notice-banner">
-        <AlertCircle size={16} />
-        <div>
-          <strong>Switch integration not configured</strong>
-          <span>
-            Cards below show sample data only. Configure Switch after reviewing the
-            verified integration setup.
+      {isSwitchConfigured ? (
+        <div className="notice-banner banner-success">
+          <ShieldCheck size={16} />
+          <div>
+            <strong>Switch Agent Bridge Active</strong>
+            <span>
+              Connected to Switch server at {health?.integrations.switch.serverUrl}.
+              Active room: {health?.integrations.switch.activeRoom ?? "incident-war-room"}.
+            </span>
+          </div>
+          <span className="demo-pill pill-live">
+            <span /> LIVE
           </span>
         </div>
-        <span className="demo-pill">
-          <span /> DEMO
-        </span>
-      </div>
+      ) : (
+        <div className="notice-banner">
+          <AlertCircle size={16} />
+          <div>
+            <strong>Switch integration not configured</strong>
+            <span>
+              Cards below show sample data only. Configure Switch after reviewing the
+              verified integration setup.
+            </span>
+          </div>
+          <span className="demo-pill">
+            <span /> DEMO
+          </span>
+        </div>
+      )}
       <div className="agent-cards">
         {agents.map((agent, index) => (
           <article className="panel agent-card" key={agent.id}>
@@ -1033,15 +1076,22 @@ function AgentsPage() {
           <Command size={18} />
         </div>
         <div>
-          <h3>Connect your Switch workspace</h3>
+          <h3>
+            {isSwitchConfigured
+              ? "Switch workspace connected"
+              : "Connect your Switch workspace"}
+          </h3>
           <p>
-            Switch execution is disabled until the official API and agent connection
-            details are verified. No tasks are sent from this demo.
+            {isSwitchConfigured
+              ? health?.integrations.switch.message
+              : "Switch execution is disabled until the official API and agent connection details are verified. No tasks are sent from this demo."}
           </p>
         </div>
-        <span className="integration-status">
+        <span
+          className={`integration-status ${isSwitchConfigured ? "connected" : ""}`}
+        >
           <i />
-          Not configured
+          {isSwitchConfigured ? "Configured" : "Not configured"}
         </span>
       </section>
     </>

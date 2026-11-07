@@ -76,6 +76,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data;
 }
 
+export interface ApiHealth {
+  status: string;
+  mode: string;
+  integrations: {
+    switch: {
+      configured: boolean;
+      provider: string;
+      message: string;
+      serverUrl?: string;
+      activeRoom?: string;
+    };
+    github: {
+      configured: boolean;
+      message: string;
+    };
+  };
+}
+
+export async function fetchHealth(): Promise<ApiHealth> {
+  return request<ApiHealth>("/api/health");
+}
+
 export async function fetchIncidents(): Promise<Incident[]> {
   const records = await request<ApiIncident[]>("/api/incidents");
   return records.map(toIncident);
